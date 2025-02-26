@@ -66,8 +66,42 @@ async function logConnection(
     });
 }
 
+// OAuth token exchange function
+async function exchangeCodeForTokens(provider: EmailProvider, code: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+
+  try {
+    const response = await fetch(
+      `${process.env.VITE_SUPABASE_URL}/functions/v1/oauth-exchange`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider,
+          code,
+          redirect_uri: `${window.location.origin}/auth/provider`,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to exchange code for tokens');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Token exchange error:', error);
+    throw new Error('Failed to complete authentication. Please try again.');
+  }
+}
+
 // Connect OAuth provider
-export async function connectOAuthProvider(provider: EmailProvider) {
+export async function connectOAuthProvider(provider: EmailProvider, code: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
   
@@ -79,38 +113,12 @@ export async function connectOAuthProvider(provider: EmailProvider) {
       provider,
       status: 'connecting',
       last_check: new Date().toISOString(),
+      error_message: '',
     });
 
   try {
-    // Check for existing credentials
-    const { data: existingCreds } = await supabase
-      .from('email_provider_credentials')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('provider', provider)
-      .single();
-
-    if (existingCreds) {
-      await logConnection(user.id, provider, 'already_connected');
-      
-      // Update connection status
-      await supabase
-        .from('provider_connection_status')
-        .upsert({
-          user_id: user.id,
-          provider,
-          status: 'connected',
-          last_check: new Date().toISOString(),
-        });
-
-      return {
-        success: true,
-        message: `${provider} already connected`,
-      };
-    }
-
-    // In development, simulate OAuth flow
-    const credentials = DEV_CREDENTIALS[provider];
+    // Exchange the code for tokens
+    const tokens = await exchangeCodeForTokens(provider, code);
     
     // Save encrypted credentials
     const { error: saveError } = await supabase
@@ -118,10 +126,7 @@ export async function connectOAuthProvider(provider: EmailProvider) {
       .upsert({
         user_id: user.id,
         provider,
-        credentials: {
-          ...credentials,
-          scope: DEV_OAUTH_CONFIGS[provider].scope,
-        },
+        credentials: tokens,
         is_valid: true,
       }, {
         onConflict: 'user_id,provider',
@@ -147,7 +152,7 @@ export async function connectOAuthProvider(provider: EmailProvider) {
         provider,
         status: 'connected',
         last_check: new Date().toISOString(),
-        error_message: null,
+        error_message: '',
       });
 
     // Log successful connection
@@ -157,15 +162,12 @@ export async function connectOAuthProvider(provider: EmailProvider) {
         user_id: user.id,
         event_type: 'provider_connected',
         status: 'success',
-        details: { provider, dev_mode: true },
+        details: { provider },
       });
-
-    // Test the connection
-    await testConnection();
 
     return {
       success: true,
-      message: `${provider} connected successfully (Development Mode)`,
+      message: `${provider} connected successfully`,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Connection failed';
@@ -185,7 +187,7 @@ export async function connectOAuthProvider(provider: EmailProvider) {
       .from('email_processing_logs')
       .insert({
         user_id: user.id,
-        event_type: 'provider_connected',
+        event_type: 'provider_connection',
         status: 'error',
         error: message,
         details: { provider },

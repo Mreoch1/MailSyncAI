@@ -11,30 +11,37 @@ const OAUTH_CONFIGS = {
   gmail: {
     name: 'Gmail',
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
     scope: [
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/gmail.send',
-      'https://www.googleapis.com/auth/gmail.modify'
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/userinfo.email'
     ].join(' '),
     responseType: 'code',
     accessType: 'offline',
     prompt: 'consent',
+    includeGrantedScopes: true,
   },
   outlook: {
     name: 'Outlook',
     authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    scope: 'offline_access Mail.Read Mail.Send',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    scope: 'offline_access Mail.Read Mail.Send Mail.ReadWrite User.Read',
     responseType: 'code',
     prompt: 'consent',
   },
   yahoo: {
     name: 'Yahoo',
     authUrl: 'https://api.login.yahoo.com/oauth2/request_auth',
+    tokenUrl: 'https://api.login.yahoo.com/oauth2/get_token',
     scope: 'mail-r mail-w',
     responseType: 'code',
     prompt: 'consent',
   },
 } as const;
+
+type SupportedProvider = keyof typeof OAUTH_CONFIGS;
 
 export function ProviderAuthPage() {
   const [searchParams] = useSearchParams();
@@ -42,7 +49,7 @@ export function ProviderAuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const provider = searchParams.get('provider') as EmailProvider;
+  const provider = searchParams.get('provider') as SupportedProvider;
   const code = searchParams.get('code');
   const error_description = searchParams.get('error_description');
 
@@ -64,7 +71,7 @@ export function ProviderAuthPage() {
       // If we have a code, complete the OAuth flow
       if (code) {
         try {
-          const result = await connectOAuthProvider(provider);
+          const result = await connectOAuthProvider(provider, code);
           toast.success(result.message);
           navigate('/dashboard');
         } catch (error) {
@@ -79,7 +86,7 @@ export function ProviderAuthPage() {
 
       // If we just have a provider, start the OAuth flow
       const config = OAUTH_CONFIGS[provider];
-      const clientId = import.meta.env[`VITE_${provider.toUpperCase()}_CLIENT_ID`];
+      const clientId = import.meta.env[`VITE_${provider.toUpperCase()}_CLIENT_ID`] as string;
       
       if (!clientId) {
         setError(`${config.name} integration is not configured`);
