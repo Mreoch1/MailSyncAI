@@ -10,9 +10,8 @@
   NETLIFY_IGNORE_TYPESCRIPT_ERRORS = "true"
   # Supabase configuration
   VITE_SUPABASE_URL = "https://ucnxqjguatqraoxidtsq.supabase.co"
-  # IMPORTANT: This is a demo key and needs to be replaced with your actual Supabase anon key
-  # Get your actual key from: Supabase Dashboard > Settings > API > Project API keys > anon public
-  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  # This is your actual Supabase anon key
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbnhxamd1YXRxcmFveGlkdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1Mjg3ODgsImV4cCI6MjA1NjEwNDc4OH0.pGFzeld6sKKvaVr6jbvkUUggHotq3XFGfktRXu8wNWo"
 
 [build.processing]
   skip_processing = false
