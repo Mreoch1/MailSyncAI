@@ -4,7 +4,7 @@ import { Routes } from '@/routes';
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" defaultColorScheme="default" storageKey="mailsyncai-theme">
+    <ThemeProvider defaultTheme="system" defaultColorScheme="ocean-breeze" storageKey="mailsyncai-theme">
       <Routes />
       <Toaster position="top-right" />
     </ThemeProvider>
