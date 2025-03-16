@@ -47,10 +47,22 @@ export function ProviderAuthPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const provider = searchParams.get('provider') as SupportedProvider;
   const code = searchParams.get('code');
   const error_description = searchParams.get('error_description');
+
+  // Handle navigation with debounce
+  useEffect(() => {
+    if (isNavigating) {
+      const timer = setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isNavigating, navigate]);
 
   useEffect(() => {
     async function handleAuth() {
@@ -63,7 +75,7 @@ export function ProviderAuthPage() {
 
       // If we don't have a provider or code, redirect to dashboard
       if (!provider || !OAUTH_CONFIGS[provider]) {
-        navigate('/dashboard');
+        setIsNavigating(true);
         return;
       }
 
@@ -72,12 +84,11 @@ export function ProviderAuthPage() {
         try {
           const result = await connectOAuthProvider(provider, code);
           toast.success(result.message);
-          navigate('/dashboard');
+          setIsNavigating(true);
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to connect provider';
           setError(message);
           toast.error(message);
-        } finally {
           setIsLoading(false);
         }
         return;
@@ -108,8 +119,10 @@ export function ProviderAuthPage() {
       window.location.href = `${config.authUrl}?${params.toString()}`;
     }
 
-    handleAuth();
-  }, [provider, code, error_description, navigate]);
+    if (!isNavigating) {
+      handleAuth();
+    }
+  }, [provider, code, error_description, isNavigating]);
 
   if (error) {
     return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,19 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
   }>({ running: false });
   const navigate = useNavigate();
   const [provider, setProvider] = useState<EmailProvider>('gmail');
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  // Handle debounced navigation
+  useEffect(() => {
+    if (isNavigating && pendingNavigation) {
+      const timer = setTimeout(() => {
+        navigate(pendingNavigation);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isNavigating, pendingNavigation, navigate]);
 
   function clearError() {
     setError(null);
@@ -80,8 +93,9 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
 
       await verifyAuthentication();
 
-      // Redirect to provider auth page
-      navigate(`/auth/provider?provider=${provider}`);
+      // Set up debounced navigation instead of immediate navigation
+      setPendingNavigation(`/auth/provider?provider=${provider}`);
+      setIsNavigating(true);
       return true; // Return true to indicate success
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to connect email provider';
@@ -145,6 +159,11 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     
+    // Prevent multiple submissions
+    if (loading || isNavigating) {
+      return;
+    }
+    
     try {
       let success = false;
       if (provider === 'imap') {
@@ -153,7 +172,7 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
         success = await handleOAuthLogin(provider);
       }
 
-      if (success) {
+      if (success && !isNavigating) {
         toast.success(`${PROVIDER_CONFIGS[provider].title} connected successfully`);
         onSuccess();
       }
@@ -276,7 +295,7 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
         </>
       )}
 
-      <Button type="submit" disabled={loading} className="w-full mt-6">
+      <Button type="submit" disabled={loading || isNavigating} className="w-full mt-6">
         <span className="mx-auto">
           {loading && (
             <div className="flex items-center justify-center gap-2">
@@ -286,7 +305,13 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
                 : 'Testing connection...'}
             </div>
           )}
-          {!loading && `Connect ${PROVIDER_CONFIGS[provider].title}`}
+          {isNavigating && (
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Redirecting...
+            </div>
+          )}
+          {!loading && !isNavigating && `Connect ${PROVIDER_CONFIGS[provider].title}`}
         </span>
       </Button>
 

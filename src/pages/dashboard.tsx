@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmailSummaryCard } from '@/components/email-summary-card';
 import { EmailProviderForm } from '@/components/email-provider-form';
@@ -11,9 +11,14 @@ import { Mail, Calendar, Bell, Loader2 } from 'lucide-react';
 
 export function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
-  const { settings, loading: settingsLoading } = useEmailSettings();
+  const { settings, loading: settingsLoading, refetch: refetchSettings } = useEmailSettings();
   const [summaries, setSummaries] = useState<EmailSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshData = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     async function loadSummaries() {
@@ -28,9 +33,11 @@ export function DashboardPage() {
     }
 
     if (profile) {
+      setLoading(true);
       loadSummaries();
+      refetchSettings();
     }
-  }, [profile]);
+  }, [profile, refreshKey, refetchSettings]);
 
   if (profileLoading || loading || settingsLoading) {
     return (
@@ -152,7 +159,7 @@ export function DashboardPage() {
                 Connect your email provider to start receiving AI-powered summaries
               </p>
               <EmailProviderForm
-                onSuccess={() => window.location.reload()}
+                onSuccess={refreshData}
               />
             </div>
           </CardContent>
