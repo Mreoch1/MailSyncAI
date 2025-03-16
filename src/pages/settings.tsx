@@ -348,11 +348,11 @@ export function SettingsPage() {
                   <h4 className="text-sm font-medium mb-2">Support</h4>
                   <div className="space-y-2">
                     <a
-                      href="mailto:support@mailsyncai.com"
+                      href="mailto:mailsyncai.support@gmail.com"
                       className="flex items-center text-sm text-primary hover:underline"
                     >
                       <Mail className="h-4 w-4 mr-2" />
-                      support@mailsyncai.com
+                      mailsyncai.support@gmail.com
                     </a>
                     <p className="text-sm text-muted-foreground">
                       Response time: {profile?.subscription_tier === 'pro'

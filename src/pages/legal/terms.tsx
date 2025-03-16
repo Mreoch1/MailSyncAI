@@ -93,7 +93,7 @@ export function TermsPage() {
 
         <h2 className="text-xl font-semibold mt-8 mb-4">12. Contact Information</h2>
         <p>
-          If you have any questions about these Terms, please contact us at <a href="mailto:legal@mailsyncai.com" className="text-primary hover:underline">legal@mailsyncai.com</a>.
+          If you have any questions about these Terms, please contact us at <a href="mailto:mailsyncai.legal@gmail.com" className="text-primary hover:underline">mailsyncai.legal@gmail.com</a>.
         </p>
       </div>
 

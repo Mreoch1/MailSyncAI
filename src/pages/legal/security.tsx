@@ -152,7 +152,7 @@ export function SecurityPage() {
 
         <h2 className="text-xl font-semibold mt-8 mb-4">11. Contact Information</h2>
         <p>
-          If you have any questions about our security practices or if you believe you have identified a security vulnerability, please contact our security team at <a href="mailto:security@mailsyncai.com" className="text-primary hover:underline">security@mailsyncai.com</a>.
+          If you have any questions about our security practices or if you believe you have identified a security vulnerability, please contact our security team at <a href="mailto:mailsyncai.security@gmail.com" className="text-primary hover:underline">mailsyncai.security@gmail.com</a>.
         </p>
       </div>
 

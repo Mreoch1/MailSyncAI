@@ -157,7 +157,7 @@ export function PrivacyPage() {
 
         <h2 className="text-xl font-semibold mt-8 mb-4">11. Contact Information</h2>
         <p>
-          If you have any questions about this Privacy Policy, please contact us at <a href="mailto:privacy@mailsyncai.com" className="text-primary hover:underline">privacy@mailsyncai.com</a>.
+          If you have any questions about this Privacy Policy, please contact us at <a href="mailto:mailsyncai.privacy@gmail.com" className="text-primary hover:underline">mailsyncai.privacy@gmail.com</a>.
         </p>
       </div>
 

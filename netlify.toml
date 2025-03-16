@@ -20,6 +20,9 @@
   SMTP_USERNAME = "postmaster@mailsyncai.com"
   SMTP_FROM = "noreply@mailsyncai.com"
   # Note: SMTP_PASSWORD should be set in Netlify UI as a secret environment variable
+  
+  # Site URL configuration
+  SITE_URL = "https://eloquent-parfait-84d32a.netlify.app"
 
 [build.processing]
   skip_processing = false
