@@ -18,7 +18,7 @@ MailSyncAI is an intelligent email management system that uses AI to help you or
 - Tailwind CSS for styling
 - shadcn/ui for beautiful UI components
 - Supabase for backend and authentication
-- OpenAI GPT for email processing
+- DeepSeek for email processing
 
 ## Development
 
@@ -54,4 +54,4 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details# MailSyncAI
+MIT License - See [LICENSE](LICENSE) for details

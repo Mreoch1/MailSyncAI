@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { updateGPTSettings } from '@/lib/api';
+import { updateDeepSeekSettings } from '@/lib/api';
 import { toast } from 'sonner';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -49,7 +49,7 @@ marketing@example.com
 no-reply@socialmedia.com
 updates@promotional.com`;
 
-export function GPTSettingsForm() {
+export function DeepSeekSettingsForm() {
   const [loading, setLoading] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
   const [excludedSenders, setExcludedSenders] = useState('');
@@ -86,8 +86,8 @@ export function GPTSettingsForm() {
       // Use default prompt if custom prompt is empty
       const finalPrompt = customPrompt.trim() || DEFAULT_PROMPT;
 
-      await updateGPTSettings({
-        model: 'gpt-3.5-turbo',
+      await updateDeepSeekSettings({
+        model: 'deepseek-chat',
         custom_prompt: finalPrompt,
         excluded_senders: sendersList,
         exclude_promotions: excludePromotions,

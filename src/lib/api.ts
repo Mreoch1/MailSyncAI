@@ -371,17 +371,22 @@ export async function connectGmail() {
   }
 }
 
-export async function updateGPTSettings(settings: {
-  model: 'gpt-3.5-turbo' | 'gpt-4',
+export async function updateDeepSeekSettings(settings: {
+  model: 'deepseek-chat',
+  custom_prompt?: string,
+  excluded_senders?: string[],
+  exclude_promotions?: boolean,
+  exclude_newsletters?: boolean,
   max_tokens?: number,
   temperature?: number
 }) {
   const userId = await getCurrentUserId();
   
   const { data, error } = await supabase
-    .from('gpt_settings')
+    .from('ai_settings')
     .upsert({
       user_id: userId,
+      provider: 'deepseek',
       ...settings,
     })
     .select()
@@ -389,4 +394,24 @@ export async function updateGPTSettings(settings: {
 
   if (error) throw error;
   return data;
+}
+
+// Keep for backward compatibility, but redirect to DeepSeek
+export async function updateGPTSettings(settings: {
+  model: string,
+  custom_prompt?: string,
+  excluded_senders?: string[],
+  exclude_promotions?: boolean,
+  exclude_newsletters?: boolean,
+  max_tokens?: number,
+  temperature?: number
+}) {
+  // Convert GPT model to DeepSeek model
+  const deepseekSettings = {
+    ...settings,
+    model: 'deepseek-chat',
+    provider: 'deepseek'
+  };
+  
+  return updateDeepSeekSettings(deepseekSettings);
 }

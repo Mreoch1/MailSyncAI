@@ -16,7 +16,7 @@ import { useEmailSettings } from '@/hooks/use-email-settings';
 import { Loader2, ExternalLink, Mail } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { updateEmailSettings } from '@/lib/api';
-import { GPTSettingsForm } from '@/components/gpt-settings-form';
+import { DeepSeekSettingsForm } from '@/components/gpt-settings-form';
 import { SMTPConfigForm } from '@/components/smtp-config-form';
 import { toast } from 'sonner';
 import type { EmailSettings } from '@/types/database';
@@ -221,7 +221,7 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <GPTSettingsForm />
+            <DeepSeekSettingsForm />
           </CardContent>
         </Card>
 

@@ -165,24 +165,31 @@ serve(async (req) => {
       .update({ total_emails: emails.length })
       .eq('id', batch.id);
 
-    // Get GPT settings
-    const { data: gptSettings } = await supabaseClient
-      .from('gpt_settings')
+    // Get user's email settings and AI settings
+    const { data: emailSettings } = await supabaseClient
+      .from('email_settings')
       .select('*')
       .eq('user_id', user.id)
       .single();
 
-    // Process emails with GPT
+    // Get AI settings (previously GPT settings)
+    const { data: aiSettings } = await supabaseClient
+      .from('ai_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    // Process emails with DeepSeek
     const processedEmails: ProcessedEmail[] = [];
     let errorCount = 0;
 
     for (const email of emails) {
       const processingStart = new Date();
       try {
-        const processed = await processEmailWithGPT(
+        const processed = await processEmailWithDeepSeek(
           email,
           userRules || [],
-          gptSettings?.model || 'gpt-3.5-turbo'
+          aiSettings?.model || 'deepseek-chat'
         );
         processedEmails.push(processed);
 
@@ -445,7 +452,8 @@ async function fetchIMAPEmails(
 
   return emails;
 }
-async function processEmailWithGPT(
+
+async function processEmailWithDeepSeek(
   email: EmailContent,
   userRules: any[],
   model: string
@@ -468,14 +476,15 @@ async function processEmailWithGPT(
     ).join('\n')}
   `;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  // Use DeepSeek API instead of OpenAI
+  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+      'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model,
+      model: 'deepseek-chat', // Use appropriate DeepSeek model
       messages: [
         {
           role: 'system',
@@ -491,13 +500,13 @@ async function processEmailWithGPT(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to process email with GPT');
+    throw new Error('Failed to process email with DeepSeek');
   }
 
   const result = await response.json();
   const analysis = result.choices[0].message.content;
 
-  // Parse GPT response and extract information
+  // Parse DeepSeek response and extract information
   const category = analysis.match(/Category:\s*(\w+)/i)?.[1] || 'general';
   const importance = analysis.match(/Importance:\s*(\w+)/i)?.[1] || 'medium';
   const summary = analysis.match(/Summary:\s*(.+?)(?=\n|$)/i)?.[1] || '';
