@@ -249,6 +249,44 @@ export async function updateProfile(profile: Partial<Profile>) {
   return data as Profile;
 }
 
+// Map email domains to providers
+const EMAIL_DOMAIN_TO_PROVIDER = {
+  'gmail.com': 'gmail',
+  'googlemail.com': 'gmail',
+  'outlook.com': 'outlook',
+  'hotmail.com': 'outlook',
+  'live.com': 'outlook',
+  'msn.com': 'outlook',
+  'yahoo.com': 'yahoo',
+  'aol.com': 'aol',
+  'protonmail.com': 'protonmail',
+  'protonmail.ch': 'protonmail',
+  'pm.me': 'protonmail',
+  'zoho.com': 'zoho',
+  'icloud.com': 'icloud',
+  'me.com': 'icloud',
+  'mac.com': 'icloud'
+};
+
+// Function to detect provider from email
+function detectProviderFromEmail(email: string): string {
+  if (!email) return 'gmail'; // Default to gmail if no email
+  
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return 'gmail';
+  
+  // Map the domain to a supported provider or default to gmail
+  const detectedProvider = EMAIL_DOMAIN_TO_PROVIDER[domain];
+  
+  // Only return providers that are supported in our EmailProvider type
+  if (detectedProvider && ['gmail', 'outlook', 'yahoo', 'imap'].includes(detectedProvider)) {
+    return detectedProvider;
+  }
+  
+  // Default to gmail for unsupported providers
+  return 'gmail';
+}
+
 export async function getEmailSettings() {
   const userId = await getCurrentUserId();
   
@@ -264,12 +302,20 @@ export async function getEmailSettings() {
     return existingSettings[0] as EmailSettings;
   }
 
-  // No settings found, create default settings
+  // No settings found, get user's email to detect provider
+  const { data: { user } } = await supabase.auth.getUser();
+  const userEmail = user?.email || '';
+  
+  // Detect provider from email
+  const detectedProvider = detectProviderFromEmail(userEmail);
+  console.log(`Detected provider ${detectedProvider} for email ${userEmail}`);
+
+  // Create default settings with detected provider
   const { data: newSettings, error: createError } = await supabase
     .from('email_settings')
     .insert({
       user_id: userId,
-      provider: 'gmail',
+      provider: detectedProvider,
       summary_time: '09:00',
       important_only: false,
     })

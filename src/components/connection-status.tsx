@@ -9,14 +9,69 @@ const PROVIDER_DISPLAY_NAMES = {
   gmail: 'GMAIL',
   outlook: 'OUTLOOK',
   yahoo: 'YAHOO',
-  imap: 'IMAP'
+  imap: 'IMAP',
+  hotmail: 'HOTMAIL',
+  live: 'OUTLOOK',
+  msn: 'OUTLOOK',
+  aol: 'AOL',
+  protonmail: 'PROTONMAIL',
+  zoho: 'ZOHO',
+  icloud: 'ICLOUD',
+  me: 'ICLOUD',
+  mac: 'ICLOUD'
 };
+
+// Map email domains to providers
+const EMAIL_DOMAIN_TO_PROVIDER = {
+  'gmail.com': 'gmail',
+  'googlemail.com': 'gmail',
+  'outlook.com': 'outlook',
+  'hotmail.com': 'hotmail',
+  'live.com': 'live',
+  'msn.com': 'msn',
+  'yahoo.com': 'yahoo',
+  'aol.com': 'aol',
+  'protonmail.com': 'protonmail',
+  'protonmail.ch': 'protonmail',
+  'pm.me': 'protonmail',
+  'zoho.com': 'zoho',
+  'icloud.com': 'icloud',
+  'me.com': 'me',
+  'mac.com': 'mac'
+};
+
+// Function to detect provider from email
+function detectProviderFromEmail(email: string): string | null {
+  if (!email) return null;
+  
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return null;
+  
+  return EMAIL_DOMAIN_TO_PROVIDER[domain] || null;
+}
 
 export function ConnectionStatus() {
   const { settings, loading: settingsLoading } = useEmailSettings();
   const [status, setStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [providerName, setProviderName] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [detectedProvider, setDetectedProvider] = useState<string | null>(null);
+
+  // Get the user's email
+  useEffect(() => {
+    async function getUserEmail() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+        const detected = detectProviderFromEmail(user.email);
+        setDetectedProvider(detected);
+        console.log('Detected provider from email:', detected);
+      }
+    }
+    
+    getUserEmail();
+  }, []);
 
   useEffect(() => {
     async function checkConnection() {
@@ -54,10 +109,18 @@ export function ConnectionStatus() {
 
         if (status?.status === 'connected') {
           setStatus('connected');
-          // Use the provider from the status record to ensure accuracy
-          const provider = status.provider || settings.provider;
+          
+          // Use detected provider if available, otherwise fall back to the one from settings
+          let displayProvider = status.provider || settings.provider;
+          
+          // If we have a detected provider from the user's email, use that instead
+          if (detectedProvider && userEmail) {
+            console.log('Using detected provider:', detectedProvider);
+            displayProvider = detectedProvider;
+          }
+          
           // Use the display name mapping or fallback to uppercase provider name
-          setProviderName(PROVIDER_DISPLAY_NAMES[provider] || provider.toUpperCase());
+          setProviderName(PROVIDER_DISPLAY_NAMES[displayProvider] || displayProvider.toUpperCase());
         } else {
           setStatus('error');
           setErrorMessage(status?.error_message || 'Provider not connected');
@@ -73,7 +136,7 @@ export function ConnectionStatus() {
     if (settings) {
       checkConnection();
     }
-  }, [settings]);
+  }, [settings, userEmail, detectedProvider]);
 
   if (settingsLoading) {
     return (
