@@ -31,18 +31,33 @@ export function ConnectionStatus() {
         setStatus('checking');
         setErrorMessage(null);
         
+        // Get the current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('Not authenticated');
+        }
+        
         // Check provider connection status
-        const { data: status } = await supabase
+        const { data: status, error } = await supabase
           .from('provider_connection_status')
-          .select('status, error_message')
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+          .select('status, error_message, provider')
+          .eq('user_id', user.id)
           .eq('provider', settings.provider)
           .single();
 
+        if (error) {
+          console.error('Error fetching connection status:', error);
+          setStatus('error');
+          setErrorMessage('Failed to check connection status');
+          return;
+        }
+
         if (status?.status === 'connected') {
           setStatus('connected');
+          // Use the provider from the status record to ensure accuracy
+          const provider = status.provider || settings.provider;
           // Use the display name mapping or fallback to uppercase provider name
-          setProviderName(PROVIDER_DISPLAY_NAMES[settings.provider] || settings.provider.toUpperCase());
+          setProviderName(PROVIDER_DISPLAY_NAMES[provider] || provider.toUpperCase());
         } else {
           setStatus('error');
           setErrorMessage(status?.error_message || 'Provider not connected');
