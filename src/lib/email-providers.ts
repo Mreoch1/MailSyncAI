@@ -319,12 +319,12 @@ export async function connectIMAP(config: {
       server: config.server,
       port: config.port,
       username: config.username,
-      dev_mode: true,
+      dev_mode: false,
     });
 
     return {
       success: true,
-      message: 'IMAP server connected successfully (Development Mode)',
+      message: 'IMAP server connected successfully',
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Connection failed';
@@ -343,12 +343,12 @@ export async function testEmailConnection(provider: EmailProvider | 'imap') {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     await logConnection(user.id, provider, 'test_success', undefined, {
-      dev_mode: true,
+      dev_mode: false,
     });
 
     return {
       success: true,
-      message: 'Connection test successful (Development Mode)',
+      message: 'Connection test successful',
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Test failed';

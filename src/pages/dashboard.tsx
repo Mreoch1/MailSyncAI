@@ -5,11 +5,13 @@ import { EmailProviderForm } from '@/components/email-provider-form';
 import { ConnectionStatus } from '@/components/connection-status';
 import { getEmailSummaries } from '@/lib/api';
 import { useProfile } from '@/hooks/use-profile';
+import { useEmailSettings } from '@/hooks/use-email-settings';
 import type { EmailSummary } from '@/types/database';
 import { Mail, Calendar, Bell, Loader2 } from 'lucide-react';
 
 export function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
+  const { settings, loading: settingsLoading } = useEmailSettings();
   const [summaries, setSummaries] = useState<EmailSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +32,7 @@ export function DashboardPage() {
     }
   }, [profile]);
 
-  if (profileLoading || loading) {
+  if (profileLoading || loading || settingsLoading) {
     return (
       <div className="flex h-[200px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -39,6 +41,7 @@ export function DashboardPage() {
   }
 
   const latestSummary = summaries[0];
+  const isEmailConnected = settings?.provider && settings.provider !== '';
 
   return (
     <div className="space-y-6">
@@ -125,6 +128,19 @@ export function DashboardPage() {
             emails={latestSummary.low_priority}
           />
         </div>
+      ) : isEmailConnected ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center max-w-md mx-auto">
+              <h3 className="text-2xl font-semibold mb-2">
+                No Email Summaries Yet
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Your email is connected, but we haven't processed any emails yet. Check back soon!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardContent className="pt-6">

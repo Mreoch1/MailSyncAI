@@ -4,6 +4,14 @@ import { useEmailSettings } from '@/hooks/use-email-settings';
 import { supabase } from '@/lib/supabase';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
+// Map provider names to display names
+const PROVIDER_DISPLAY_NAMES = {
+  gmail: 'GMAIL',
+  outlook: 'OUTLOOK',
+  yahoo: 'YAHOO',
+  imap: 'IMAP'
+};
+
 export function ConnectionStatus() {
   const { settings, loading: settingsLoading } = useEmailSettings();
   const [status, setStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
@@ -33,7 +41,8 @@ export function ConnectionStatus() {
 
         if (status?.status === 'connected') {
           setStatus('connected');
-          setProviderName(settings.provider.toUpperCase());
+          // Use the display name mapping or fallback to uppercase provider name
+          setProviderName(PROVIDER_DISPLAY_NAMES[settings.provider] || settings.provider.toUpperCase());
         } else {
           setStatus('error');
           setErrorMessage(status?.error_message || 'Provider not connected');
