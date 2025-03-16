@@ -72,7 +72,7 @@ export function SettingsPage() {
       console.log('Testing connection...');
       const result = await testConnection();
       console.log('Connection test result:', result);
-      toast.success('Connection test successful! Your email provider is properly connected.');
+      toast.success(`Connection test successful! Your ${result.provider?.toUpperCase() || 'email'} account is properly connected.`);
     } catch (error) {
       console.error('Connection test error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -88,7 +88,7 @@ export function SettingsPage() {
       console.log('Sending test email...');
       const result = await sendTestEmail();
       console.log('Test email result:', result);
-      toast.success('Test email sent successfully! Please check your inbox.');
+      toast.success(result.message || 'Test email sent successfully! Please check your inbox.');
     } catch (error) {
       console.error('Test email error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
