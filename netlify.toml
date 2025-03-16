@@ -51,17 +51,8 @@
   to = "/index.html"
   status = 200
 
-# Add security headers with more compatible settings
+# Minimal security headers to avoid compatibility issues
 [[headers]]
   for = "/*"
   [headers.values]
-    # Use a shorter max-age for HSTS to allow for easier recovery if needed
-    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    # Simplified Content-Security-Policy to avoid compatibility issues
-    Content-Security-Policy = "upgrade-insecure-requests"
-    # Add Feature-Policy header
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()" 
+    X-Content-Type-Options = "nosniff" 
