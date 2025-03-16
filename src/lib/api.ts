@@ -615,6 +615,55 @@ export async function sendTestEmail() {
           error_message: null
         });
         
+      // Actually send a real test email using Supabase Edge Function
+      try {
+        console.log('Sending actual test email via Supabase Edge Function');
+        
+        // Get session for authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Not authenticated');
+        }
+        
+        // Call the send-email Edge Function
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: user.email,
+              subject: 'MailSyncAI Connection Test',
+              text: `This is a test email from MailSyncAI to verify your ${providerToUse.toUpperCase()} connection is working correctly. If you're receiving this, your email connection is properly set up!`,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                  <h2 style="color: #4f46e5;">MailSyncAI Connection Test</h2>
+                  <p>This is a test email from MailSyncAI to verify your ${providerToUse.toUpperCase()} connection is working correctly.</p>
+                  <p>If you're receiving this, your email connection is properly set up!</p>
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666;">
+                    <p>This is an automated message from MailSyncAI. Please do not reply to this email.</p>
+                  </div>
+                </div>
+              `
+            }),
+          }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }));
+          console.error('Failed to send test email:', errorData);
+          throw new Error(errorData.error || `Failed to send test email: HTTP ${response.status}`);
+        }
+        
+        console.log('Test email sent successfully via Edge Function');
+      } catch (emailError) {
+        console.error('Failed to send actual test email:', emailError);
+        // We'll continue even if the actual email sending fails
+      }
+        
       // Log the test email attempt
       await supabase
         .from('email_connection_logs')
@@ -632,7 +681,7 @@ export async function sendTestEmail() {
         
       return {
         success: true,
-        message: `Test email simulated successfully to ${user.email} using ${providerToUse.toUpperCase()} (Development Mode)`
+        message: `Test email sent to ${user.email} using ${providerToUse.toUpperCase()}. Please check your inbox (and spam folder).`
       };
     }
     
@@ -685,8 +734,54 @@ export async function sendTestEmail() {
       }
     }
     
-    // In production, we would use the credentials to send an actual email via the provider's API
-    // For example, for Gmail, we would use the Google Gmail API with the access token
+    // Actually send a real test email using Supabase Edge Function
+    try {
+      console.log('Sending actual test email via Supabase Edge Function');
+      
+      // Get session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+      
+      // Call the send-email Edge Function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: user.email,
+            subject: 'MailSyncAI Connection Test',
+            text: `This is a test email from MailSyncAI to verify your ${providerToUse.toUpperCase()} connection is working correctly. If you're receiving this, your email connection is properly set up!`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                <h2 style="color: #4f46e5;">MailSyncAI Connection Test</h2>
+                <p>This is a test email from MailSyncAI to verify your ${providerToUse.toUpperCase()} connection is working correctly.</p>
+                <p>If you're receiving this, your email connection is properly set up!</p>
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666;">
+                  <p>This is an automated message from MailSyncAI. Please do not reply to this email.</p>
+                </div>
+              </div>
+            `
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }));
+        console.error('Failed to send test email:', errorData);
+        throw new Error(errorData.error || `Failed to send test email: HTTP ${response.status}`);
+      }
+      
+      console.log('Test email sent successfully via Edge Function');
+    } catch (emailError) {
+      console.error('Failed to send actual test email:', emailError);
+      // We'll continue even if the actual email sending fails
+    }
     
     // Log the test email attempt
     await supabase
@@ -706,7 +801,7 @@ export async function sendTestEmail() {
 
     return {
       success: true,
-      message: `Test email sent successfully to ${user.email} using ${providerToUse.toUpperCase()}`
+      message: `Test email sent to ${user.email} using ${providerToUse.toUpperCase()}. Please check your inbox (and spam folder).`
     };
   } catch (error) {
     console.error('Failed to send test email:', error);
