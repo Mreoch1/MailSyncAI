@@ -1,0 +1,5 @@
+# Redirect all HTTP to HTTPS
+http://* https://:splat 301!
+
+# SPA redirect
+/* /index.html 200 
