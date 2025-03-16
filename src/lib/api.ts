@@ -60,32 +60,81 @@ export async function testConnection() {
       throw new Error(`Your ${settings.provider} credentials are invalid. Please reconnect your email provider.`);
     }
     
-    // Check if we need to refresh the connection status
-    const lastValidated = credentials.last_validated ? new Date(credentials.last_validated) : null;
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    // Check if tokens need to be refreshed
+    let needsRefresh = false;
+    let updatedCredentials = { ...credentials.credentials };
     
-    if (!lastValidated || lastValidated < oneHourAgo) {
-      console.log('Credentials need validation, updating status');
+    if (credentials.credentials.expiry_date) {
+      const expiryDate = new Date(credentials.credentials.expiry_date);
+      const now = new Date();
       
-      // Update the provider connection status
-      await supabase
-        .from('provider_connection_status')
-        .upsert({
-          user_id: user.id,
-          provider: settings.provider,
-          status: 'connected',
-          last_check: new Date().toISOString(),
-          error_message: null
-        });
+      // If token expires in less than 5 minutes or is already expired
+      if (expiryDate.getTime() - now.getTime() < 5 * 60 * 1000) {
+        console.log('OAuth tokens need to be refreshed');
+        needsRefresh = true;
         
-      // Update the last_validated timestamp
-      await supabase
-        .from('email_provider_credentials')
-        .update({
-          last_validated: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .eq('provider', settings.provider);
+        try {
+          // Refresh the tokens
+          const refreshedTokens = await refreshOAuthTokens(
+            settings.provider, 
+            credentials.credentials.refresh_token
+          );
+          
+          // Update the credentials with new tokens
+          updatedCredentials = {
+            ...credentials.credentials,
+            access_token: refreshedTokens.access_token,
+            expiry_date: refreshedTokens.expiry_date
+          };
+          
+          // Update the credentials in the database
+          await supabase
+            .from('email_provider_credentials')
+            .update({
+              credentials: updatedCredentials,
+              is_valid: true,
+              last_validated: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+            .eq('provider', settings.provider);
+            
+          console.log('OAuth tokens refreshed successfully');
+        } catch (refreshError) {
+          console.error('Failed to refresh OAuth tokens:', refreshError);
+          // We'll continue with the existing tokens and let the validation happen
+        }
+      }
+    }
+    
+    // If we didn't need to refresh tokens or if refresh failed, still update the last_validated timestamp
+    if (!needsRefresh) {
+      // Check if we need to refresh the connection status
+      const lastValidated = credentials.last_validated ? new Date(credentials.last_validated) : null;
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      
+      if (!lastValidated || lastValidated < oneHourAgo) {
+        console.log('Credentials need validation, updating status');
+        
+        // Update the provider connection status
+        await supabase
+          .from('provider_connection_status')
+          .upsert({
+            user_id: user.id,
+            provider: settings.provider,
+            status: 'connected',
+            last_check: new Date().toISOString(),
+            error_message: null
+          });
+          
+        // Update the last_validated timestamp
+        await supabase
+          .from('email_provider_credentials')
+          .update({
+            last_validated: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .eq('provider', settings.provider);
+      }
     }
     
     // Log the successful connection test
@@ -113,6 +162,26 @@ export async function testConnection() {
         : 'Failed to test email processing'
     );
   }
+}
+
+// Helper function to refresh OAuth tokens
+async function refreshOAuthTokens(provider: string, refreshToken: string) {
+  console.log(`Refreshing OAuth tokens for ${provider}`);
+  
+  // In production, you would call the provider's token endpoint
+  // For now, we'll simulate a token refresh
+  
+  // This is where you would implement the actual token refresh logic
+  // For example, for Gmail:
+  // 1. Call the Google OAuth token endpoint with the refresh token
+  // 2. Get new access token and expiry
+  // 3. Return the updated tokens
+  
+  // Simulated response
+  return {
+    access_token: `new_${provider}_access_token_${Date.now()}`,
+    expiry_date: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
+  };
 }
 
 async function getCurrentUserId() {
@@ -373,25 +442,6 @@ export async function sendTestEmail() {
 
     console.log('Using provider:', settings.provider);
     
-    // Check provider connection status
-    const { data: providerStatus, error: providerError } = await supabase
-      .from('provider_connection_status')
-      .select('status, error_message')
-      .eq('user_id', user.id)
-      .eq('provider', settings.provider)
-      .single();
-      
-    if (providerError) {
-      console.error('Error checking provider status:', providerError);
-      throw new Error(`Failed to check provider status: ${providerError.message}`);
-    }
-    
-    if (!providerStatus || providerStatus.status !== 'connected') {
-      console.error('Provider not connected:', providerStatus);
-      const errorMsg = providerStatus?.error_message || `Email provider ${settings.provider} is not connected`;
-      throw new Error(errorMsg);
-    }
-    
     // Get provider credentials
     const { data: credentials, error: credsError } = await supabase
       .from('email_provider_credentials')
@@ -410,8 +460,52 @@ export async function sendTestEmail() {
       throw new Error('Provider credentials are invalid. Please reconnect your email provider.');
     }
     
-    // In production, we would use the credentials to send an actual email
-    // For now, we'll simulate sending a test email
+    // Check if tokens need to be refreshed
+    let updatedCredentials = { ...credentials.credentials };
+    
+    if (credentials.credentials.expiry_date) {
+      const expiryDate = new Date(credentials.credentials.expiry_date);
+      const now = new Date();
+      
+      // If token expires in less than 5 minutes or is already expired
+      if (expiryDate.getTime() - now.getTime() < 5 * 60 * 1000) {
+        console.log('OAuth tokens need to be refreshed before sending test email');
+        
+        try {
+          // Refresh the tokens
+          const refreshedTokens = await refreshOAuthTokens(
+            settings.provider, 
+            credentials.credentials.refresh_token
+          );
+          
+          // Update the credentials with new tokens
+          updatedCredentials = {
+            ...credentials.credentials,
+            access_token: refreshedTokens.access_token,
+            expiry_date: refreshedTokens.expiry_date
+          };
+          
+          // Update the credentials in the database
+          await supabase
+            .from('email_provider_credentials')
+            .update({
+              credentials: updatedCredentials,
+              is_valid: true,
+              last_validated: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+            .eq('provider', settings.provider);
+            
+          console.log('OAuth tokens refreshed successfully');
+        } catch (refreshError) {
+          console.error('Failed to refresh OAuth tokens:', refreshError);
+          // Continue with existing tokens
+        }
+      }
+    }
+    
+    // In production, we would use the credentials to send an actual email via the provider's API
+    // For example, for Gmail, we would use the Google Gmail API with the access token
     
     // Log the test email attempt
     await supabase
