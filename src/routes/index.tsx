@@ -9,7 +9,7 @@ import { DashboardPage } from '@/pages/dashboard';
 import { SettingsPage } from '@/pages/settings';
 import { SubscriptionPage } from '@/pages/subscription';
 import { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 function ScrollToTop() {
   const { pathname } = useLocation();

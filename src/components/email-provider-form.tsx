@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AlertCircle, Loader2, TestTube2 } from 'lucide-react';
-import { connectOAuthProvider, connectIMAP, testEmailConnection } from '@/lib/email-providers';
+import { connectIMAP, testEmailConnection } from '@/lib/email-providers';
 import { testConnection } from '@/lib/api';
 import { useEmailSettings } from '@/hooks/use-email-settings';
 import { toast } from 'sonner';
@@ -49,9 +49,8 @@ const PROVIDER_CONFIGS = {
 export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { settings, loading: settingsLoading } = useEmailSettings();
+  const { settings } = useEmailSettings();
   const [step, setStep] = useState<'connecting' | 'testing' | null>(null);
-  const [connectingProvider, setConnectingProvider] = useState<EmailProvider | null>(null);
   const [testStatus, setTestStatus] = useState<{
     running: boolean;
     success?: boolean;
@@ -74,7 +73,7 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
     return user;
   }
 
-  async function handleOAuthLogin(provider: string) {
+  async function handleOAuthLogin(provider: string): Promise<boolean> {
     try {
       setLoading(true);
       clearError();
@@ -83,11 +82,13 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
 
       // Redirect to provider auth page
       navigate(`/auth/provider?provider=${provider}`);
+      return true; // Return true to indicate success
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to connect email provider';
       console.error('OAuth error:', message);
       setError(message);
       toast.error(`Connection failed: ${message}`);
+      return false; // Return false to indicate failure
     } finally {
       setLoading(false);
     }
@@ -131,8 +132,9 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
       return true;
     } catch (error) {
       console.error('IMAP error:', error);
-      setError(error.message);
-      toast.error(error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to IMAP server';
+      setError(errorMessage);
+      toast.error(errorMessage);
       return false;
     } finally {
       setLoading(false);
@@ -280,7 +282,7 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
             <div className="flex items-center justify-center gap-2">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               {step === 'connecting' 
-                ? `Connecting to ${PROVIDER_CONFIGS[connectingProvider || provider].title}...`
+                ? `Connecting to ${PROVIDER_CONFIGS[provider].title}...`
                 : 'Testing connection...'}
             </div>
           )}

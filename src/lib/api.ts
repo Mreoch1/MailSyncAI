@@ -17,7 +17,7 @@ export async function testConnection() {
   }
 
   // Create a test batch
-  const { data: batch, error: batchError } = await supabase
+  const { error: batchError } = await supabase
     .from('email_batches')
     .insert({
       user_id: user.id,
@@ -120,7 +120,7 @@ export async function getEmailSettings() {
   const userId = await getCurrentUserId();
   
   // First check if we already have settings
-  const { data: existingSettings, error: queryError } = await supabase
+  const { data: existingSettings } = await supabase
     .from('email_settings')
     .select('*')
     .eq('user_id', userId)
@@ -206,9 +206,7 @@ export async function sendEmail(templateName: string, to: string, variables: Rec
 }
 
 export async function sendTestEmail() {
-  const userId = await getCurrentUserId();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: { session } } = await supabase.auth.getSession();
 
   if (!user?.email) {
     throw new Error('User email not found');
@@ -409,7 +407,7 @@ export async function updateGPTSettings(settings: {
   // Convert GPT model to DeepSeek model
   const deepseekSettings = {
     ...settings,
-    model: 'deepseek-chat',
+    model: 'deepseek-chat' as 'deepseek-chat', // Type assertion to fix TypeScript error
     provider: 'deepseek'
   };
   

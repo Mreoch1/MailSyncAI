@@ -2,7 +2,8 @@ import { supabase } from './supabase';
 import type { EmailProvider } from '@/types/database';
 import { updateEmailSettings, testConnection } from '@/lib/api';
 
-// Development mode OAuth configurations
+// Development mode OAuth configurations - commented out as unused
+/* 
 const DEV_OAUTH_CONFIGS = {
   gmail: {
     clientId: '1234567890-example.apps.googleusercontent.com',
@@ -24,8 +25,10 @@ const DEV_OAUTH_CONFIGS = {
     scope: 'mail-r mail-w',
   },
 };
+*/
 
-// Development mode credentials
+// Development mode credentials - commented out as unused
+/*
 const DEV_CREDENTIALS = {
   gmail: {
     access_token: 'dev-gmail-access-token',
@@ -46,6 +49,7 @@ const DEV_CREDENTIALS = {
     email: 'dev.user@yahoo.com',
   },
 };
+*/
 
 // Log connection attempt
 async function logConnection(
@@ -311,7 +315,7 @@ export async function connectIMAP(config: {
         provider: 'imap',
       });
 
-    await logConnection(user.id, 'imap', 'connected', null, {
+    await logConnection(user.id, 'imap', 'connected', undefined, {
       server: config.server,
       port: config.port,
       username: config.username,
@@ -338,7 +342,7 @@ export async function testEmailConnection(provider: EmailProvider | 'imap') {
     // In development, simulate connection test
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    await logConnection(user.id, provider, 'test_success', null, {
+    await logConnection(user.id, provider, 'test_success', undefined, {
       dev_mode: true,
     });
 

@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
-import { Mail, ArrowRight, Shield, Zap, Brain } from 'lucide-react';
+import { Mail, Shield, Zap, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 

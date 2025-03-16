@@ -8,6 +8,7 @@ type ThemeProviderProps = {
   defaultTheme?: Theme;
   defaultColorScheme?: ColorScheme;
   storageKey?: string;
+  colorSchemeKey?: string;
 };
 
 type ThemeProviderState = {

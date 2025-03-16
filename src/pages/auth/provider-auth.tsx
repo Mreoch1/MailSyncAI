@@ -5,7 +5,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, Mail } from 'lucide-react';
 import { connectOAuthProvider } from '@/lib/email-providers';
 import { toast } from 'sonner';
-import type { EmailProvider } from '@/types/database';
 
 const OAUTH_CONFIGS = {
   gmail: {
@@ -47,7 +46,7 @@ export function ProviderAuthPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const provider = searchParams.get('provider') as SupportedProvider;
   const code = searchParams.get('code');
@@ -58,7 +57,7 @@ export function ProviderAuthPage() {
       // If there's an error from the provider
       if (error_description) {
         setError(error_description);
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
 
@@ -79,7 +78,7 @@ export function ProviderAuthPage() {
           setError(message);
           toast.error(message);
         } finally {
-          setLoading(false);
+          setIsLoading(false);
         }
         return;
       }
@@ -90,7 +89,7 @@ export function ProviderAuthPage() {
       
       if (!clientId) {
         setError(`${config.name} integration is not configured`);
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
 
@@ -100,7 +99,7 @@ export function ProviderAuthPage() {
         redirect_uri: `${window.location.origin}/auth/provider`,
         response_type: config.responseType,
         scope: config.scope,
-        access_type: config.accessType || 'offline',
+        access_type: 'accessType' in config ? (config as any).accessType : 'offline',
         prompt: config.prompt || 'consent',
         state: provider, // Pass provider as state
       });

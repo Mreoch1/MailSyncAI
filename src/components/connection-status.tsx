@@ -3,7 +3,6 @@ import { Badge } from '@/components/ui/badge';
 import { useEmailSettings } from '@/hooks/use-email-settings';
 import { supabase } from '@/lib/supabase';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
 
 export function ConnectionStatus() {
   const { settings, loading: settingsLoading } = useEmailSettings();
