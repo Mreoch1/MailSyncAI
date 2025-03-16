@@ -2,46 +2,83 @@ import { supabase } from './supabase';
 import type { Profile, EmailSettings, EmailSummary, EmailTemplate, EmailBatch } from '@/types/database';
 
 export async function testConnection() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  // Get user's email settings
-  const { data: settings } = await supabase
-    .from('email_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!settings) {
-    throw new Error('Email provider not configured');
-  }
-
-  // Create a test batch
-  const { error: batchError } = await supabase
-    .from('email_batches')
-    .insert({
-      user_id: user.id,
-      status: 'processing',
-      total_emails: 1,
-    })
-    .select()
-    .single();
-
-  if (batchError) throw batchError;
-
   try {
-    // Process test email
-    const response = await processEmails();
+    console.log('Starting connection test');
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (!response.success) {
-      throw new Error('Email processing failed');
+    if (userError) {
+      console.error('Authentication error:', userError);
+      throw new Error(`Authentication failed: ${userError.message}`);
+    }
+    
+    if (!user) {
+      console.error('No authenticated user found');
+      throw new Error('Not authenticated');
     }
 
-    return {
-      success: true,
-      message: 'Test successful! Email processing is working correctly.',
-      details: response,
-    };
+    console.log('Fetching email settings for user:', user.id);
+    // Get user's email settings
+    const { data: settings, error: settingsError } = await supabase
+      .from('email_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (settingsError) {
+      console.error('Error fetching email settings:', settingsError);
+      throw new Error(`Failed to fetch email settings: ${settingsError.message}`);
+    }
+
+    if (!settings) {
+      console.error('No email settings found');
+      throw new Error('Email provider not configured');
+    }
+
+    console.log('Creating test batch');
+    // Create a test batch
+    const { data: batch, error: batchError } = await supabase
+      .from('email_batches')
+      .insert({
+        user_id: user.id,
+        status: 'processing',
+        total_emails: 1,
+      })
+      .select()
+      .single();
+
+    if (batchError) {
+      console.error('Error creating test batch:', batchError);
+      throw new Error(`Failed to create test batch: ${batchError.message}`);
+    }
+
+    if (!batch) {
+      console.error('Test batch creation returned no data');
+      throw new Error('Failed to create test batch: No data returned');
+    }
+
+    try {
+      console.log('Processing test email');
+      // Process test email
+      const response = await processEmails();
+      
+      if (!response || !response.success) {
+        console.error('Email processing failed:', response);
+        throw new Error(response?.error || 'Email processing failed with no specific error');
+      }
+
+      return {
+        success: true,
+        message: 'Test successful! Email processing is working correctly.',
+        details: response,
+      };
+    } catch (error) {
+      console.error('Test connection error during processing:', error);
+      throw new Error(
+        error instanceof Error 
+          ? `Email processing failed: ${error.message}` 
+          : 'Failed to test email processing'
+      );
+    }
   } catch (error) {
     console.error('Test connection error:', error);
     throw new Error(
@@ -51,6 +88,7 @@ export async function testConnection() {
     );
   }
 }
+
 async function getCurrentUserId() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -147,23 +185,92 @@ export async function getEmailSettings() {
   return newSettings as EmailSettings;
 }
 
-export async function updateEmailSettings(settings: Partial<EmailSettings>) {
-  const userId = await getCurrentUserId();
+export async function updateEmailSettings(updates: Partial<EmailSettings>) {
+  try {
+    console.log('Updating email settings:', updates);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('Authentication error:', userError);
+      throw new Error(`Authentication failed: ${userError.message}`);
+    }
+    
+    if (!user) {
+      console.error('No authenticated user found');
+      throw new Error('Not authenticated');
+    }
 
-  const { data, error } = await supabase
-    .from('email_settings')
-    .upsert({
-      user_id: userId,
-      ...settings,
-    }, {
-      onConflict: 'user_id',
-      ignoreDuplicates: false,
-    })
-    .select()
-    .single();
+    // If no ID is provided, check if settings exist
+    if (!updates.id) {
+      console.log('No settings ID provided, checking for existing settings');
+      const { data: existingSettings, error: fetchError } = await supabase
+        .from('email_settings')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-  if (error) throw error;
-  return data as EmailSettings;
+      if (fetchError) {
+        console.error('Error fetching existing settings:', fetchError);
+        throw new Error(`Failed to check existing settings: ${fetchError.message}`);
+      }
+
+      if (existingSettings) {
+        console.log('Found existing settings:', existingSettings.id);
+        updates.id = existingSettings.id;
+      }
+    }
+
+    // Prepare the update data
+    const updateData = {
+      ...updates,
+      user_id: user.id,
+      updated_at: new Date().toISOString(),
+    };
+
+    let result;
+    if (updates.id) {
+      console.log('Updating existing settings with ID:', updates.id);
+      // Update existing settings
+      const { data, error } = await supabase
+        .from('email_settings')
+        .update(updateData)
+        .eq('id', updates.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating settings:', error);
+        throw new Error(`Failed to update settings: ${error.message}`);
+      }
+
+      result = data;
+    } else {
+      console.log('Creating new settings');
+      // Create new settings
+      const { data, error } = await supabase
+        .from('email_settings')
+        .insert(updateData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating settings:', error);
+        throw new Error(`Failed to create settings: ${error.message}`);
+      }
+
+      result = data;
+    }
+
+    console.log('Settings updated successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('Failed to update email settings:', error);
+    throw new Error(
+      error instanceof Error 
+        ? error.message 
+        : 'Failed to update email settings'
+    );
+  }
 }
 
 export async function getEmailTemplate(name: string) {
@@ -213,7 +320,28 @@ export async function sendTestEmail() {
   }
 
   try {
-    // Send a confirmation email using Supabase's email service
+    console.log('Sending test email to:', user.email);
+    
+    // First check if the Edge Function is accessible
+    const testResponse = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+      {
+        method: 'HEAD',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+      }
+    ).catch(err => {
+      console.error('Edge function accessibility check failed:', err);
+      throw new Error(`Edge Function not accessible: ${err.message}`);
+    });
+    
+    if (!testResponse.ok) {
+      console.error('Edge function test failed with status:', testResponse.status);
+      throw new Error(`Edge Function returned status ${testResponse.status}`);
+    }
+    
+    // Send the actual test email
     const { error } = await supabase.functions.invoke('send-email', {
       body: {
         templateName: 'connection_test',
@@ -226,7 +354,10 @@ export async function sendTestEmail() {
       },
     });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase function error:', error);
+      throw error;
+    }
 
     return {
       success: true,
@@ -234,7 +365,11 @@ export async function sendTestEmail() {
     };
   } catch (error) {
     console.error('Failed to send test email:', error);
-    throw error;
+    // Provide more detailed error message
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Unknown error occurred while sending test email';
+    throw new Error(errorMessage);
   }
 }
 
@@ -257,10 +392,21 @@ export async function getEmailSummaries(date?: string) {
 }
 
 export async function processEmails() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Not authenticated');
-
   try {
+    console.log('Starting email processing');
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      throw new Error(`Failed to get session: ${sessionError.message}`);
+    }
+    
+    if (!session) {
+      console.error('No active session found');
+      throw new Error('Not authenticated');
+    }
+
+    console.log('Calling process-emails Edge Function');
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-emails`,
       {
@@ -270,17 +416,27 @@ export async function processEmails() {
           'Content-Type': 'application/json',
         },
       }
-    );
+    ).catch(err => {
+      console.error('Edge function fetch error:', err);
+      throw new Error(`Failed to reach Edge Function: ${err.message}`);
+    });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to process emails');
+      const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }));
+      console.error('Edge function error response:', errorData);
+      throw new Error(errorData.error || `Failed to process emails: HTTP ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json().catch(err => {
+      console.error('Error parsing response:', err);
+      throw new Error('Failed to parse response from Edge Function');
+    });
+
+    console.log('Process emails response:', data);
+    return data;
   } catch (error) {
     console.error('Failed to process emails:', error);
-    throw error;
+    throw new Error(error instanceof Error ? error.message : 'Failed to process emails');
   }
 }
 

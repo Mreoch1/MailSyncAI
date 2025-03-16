@@ -54,10 +54,13 @@ export function SettingsPage() {
         important_only: formData.get('important-only') === 'on',
       };
 
+      console.log('Saving email settings:', updates);
       await updateEmailSettings(updates);
       toast.success('Settings saved successfully');
     } catch (error) {
-      toast.error('Failed to save settings');
+      console.error('Settings save error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to save settings: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
@@ -66,10 +69,13 @@ export function SettingsPage() {
   async function handleTestConnection() {
     setTestingConnection(true);
     try {
-      await testConnection();
+      console.log('Testing connection...');
+      const result = await testConnection();
+      console.log('Connection test result:', result);
       toast.success('Connection test successful! Your email provider is properly connected.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Connection test failed';
+      console.error('Connection test error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Connection test failed: ${message}`);
     } finally {
       setTestingConnection(false);
@@ -79,10 +85,13 @@ export function SettingsPage() {
   async function handleSendTestEmail() {
     setTestEmailSending(true);
     try {
-      await sendTestEmail();
+      console.log('Sending test email...');
+      const result = await sendTestEmail();
+      console.log('Test email result:', result);
       toast.success('Test email sent successfully! Please check your inbox.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to send test email';
+      console.error('Test email error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to send test email: ${message}`);
     } finally {
       setTestEmailSending(false);
