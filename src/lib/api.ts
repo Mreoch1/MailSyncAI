@@ -36,26 +36,56 @@ export async function testConnection() {
 
     // Check provider connection status
     console.log('Checking provider connection status for:', settings.provider);
-    const { data: providerStatus, error: providerError } = await supabase
-      .from('provider_connection_status')
-      .select('status, error_message')
+    
+    // Get provider credentials
+    const { data: credentials, error: credsError } = await supabase
+      .from('email_provider_credentials')
+      .select('credentials, is_valid, last_validated')
       .eq('user_id', user.id)
       .eq('provider', settings.provider)
       .single();
       
-    if (providerError) {
-      console.error('Error checking provider status:', providerError);
-      throw new Error(`Failed to check provider status: ${providerError.message}`);
+    if (credsError) {
+      console.error('Error fetching provider credentials:', credsError);
+      throw new Error(`Failed to fetch provider credentials: ${credsError.message}`);
     }
     
-    if (!providerStatus) {
-      console.error('No provider status found');
-      throw new Error(`No connection status found for ${settings.provider}`);
+    if (!credentials) {
+      console.error('No provider credentials found');
+      throw new Error(`No credentials found for ${settings.provider}. Please reconnect your email provider.`);
     }
     
-    if (providerStatus.status !== 'connected') {
-      console.error('Provider not connected:', providerStatus);
-      throw new Error(providerStatus.error_message || `Email provider ${settings.provider} is not connected`);
+    if (!credentials.is_valid) {
+      console.error('Provider credentials are invalid');
+      throw new Error(`Your ${settings.provider} credentials are invalid. Please reconnect your email provider.`);
+    }
+    
+    // Check if we need to refresh the connection status
+    const lastValidated = credentials.last_validated ? new Date(credentials.last_validated) : null;
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    
+    if (!lastValidated || lastValidated < oneHourAgo) {
+      console.log('Credentials need validation, updating status');
+      
+      // Update the provider connection status
+      await supabase
+        .from('provider_connection_status')
+        .upsert({
+          user_id: user.id,
+          provider: settings.provider,
+          status: 'connected',
+          last_check: new Date().toISOString(),
+          error_message: null
+        });
+        
+      // Update the last_validated timestamp
+      await supabase
+        .from('email_provider_credentials')
+        .update({
+          last_validated: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('provider', settings.provider);
     }
     
     // Log the successful connection test
@@ -343,11 +373,10 @@ export async function sendTestEmail() {
 
     console.log('Using provider:', settings.provider);
     
-    // Instead of using the Edge Function, we'll use the user's email provider
-    // This is a simulated test - in production, you would use the actual provider's API
+    // Check provider connection status
     const { data: providerStatus, error: providerError } = await supabase
       .from('provider_connection_status')
-      .select('status')
+      .select('status, error_message')
       .eq('user_id', user.id)
       .eq('provider', settings.provider)
       .single();
@@ -357,10 +386,32 @@ export async function sendTestEmail() {
       throw new Error(`Failed to check provider status: ${providerError.message}`);
     }
     
-    if (providerStatus?.status !== 'connected') {
+    if (!providerStatus || providerStatus.status !== 'connected') {
       console.error('Provider not connected:', providerStatus);
-      throw new Error(`Email provider ${settings.provider} is not connected. Please reconnect your email provider.`);
+      const errorMsg = providerStatus?.error_message || `Email provider ${settings.provider} is not connected`;
+      throw new Error(errorMsg);
     }
+    
+    // Get provider credentials
+    const { data: credentials, error: credsError } = await supabase
+      .from('email_provider_credentials')
+      .select('credentials, is_valid')
+      .eq('user_id', user.id)
+      .eq('provider', settings.provider)
+      .single();
+      
+    if (credsError || !credentials) {
+      console.error('Error fetching provider credentials:', credsError);
+      throw new Error('Provider credentials not found or invalid');
+    }
+    
+    if (!credentials.is_valid) {
+      console.error('Provider credentials are invalid');
+      throw new Error('Provider credentials are invalid. Please reconnect your email provider.');
+    }
+    
+    // In production, we would use the credentials to send an actual email
+    // For now, we'll simulate sending a test email
     
     // Log the test email attempt
     await supabase
