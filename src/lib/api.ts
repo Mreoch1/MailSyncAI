@@ -213,9 +213,17 @@ export async function sendTestEmail() {
   }
 
   try {
-    // Use Supabase's built-in email functionality
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: `${window.location.origin}/dashboard`,
+    // Send a confirmation email using Supabase's email service
+    const { error } = await supabase.functions.invoke('send-email', {
+      body: {
+        templateName: 'connection_test',
+        to: user.email,
+        variables: {
+          name: user.email.split('@')[0],
+          app_name: 'MailSyncAI',
+          current_time: new Date().toLocaleString(),
+        },
+      },
     });
     
     if (error) throw error;

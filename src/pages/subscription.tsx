@@ -17,10 +17,10 @@ import type { Profile } from '@/types/database';
 const plans = [
   {
     name: 'Free',
-    description: '1-month trial with GPT-3.5',
+    description: '1-month trial with DeepSeek AI',
     price: '$0',
     features: [
-      'GPT-3.5 Turbo for summarization',
+      'DeepSeek AI for summarization',
       'Basic email categorization',
       'Up to 50 emails/day',
       'Standard response time',
@@ -29,10 +29,10 @@ const plans = [
   },
   {
     name: 'Pro',
-    description: 'Premium features with GPT-4',
+    description: 'Premium features with advanced AI',
     price: '$9.99',
     features: [
-      'GPT-4 for enhanced accuracy',
+      'Advanced DeepSeek AI processing',
       'Advanced categorization',
       'Unlimited emails',
       'Faster processing speed',

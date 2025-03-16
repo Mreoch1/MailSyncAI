@@ -13,11 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useEmailSettings } from '@/hooks/use-email-settings';
-import { Loader2, ExternalLink, Mail } from 'lucide-react';
+import { Loader2, ExternalLink, Mail, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
-import { updateEmailSettings } from '@/lib/api';
+import { updateEmailSettings, sendTestEmail, testConnection } from '@/lib/api';
 import { DeepSeekSettingsForm } from '@/components/gpt-settings-form';
-import { SMTPConfigForm } from '@/components/smtp-config-form';
 import { toast } from 'sonner';
 import type { EmailSettings } from '@/types/database';
 import { format, addDays } from 'date-fns';
@@ -26,6 +25,8 @@ export function SettingsPage() {
   const { settings, loading } = useEmailSettings();
   const { profile } = useProfile();
   const [saving, setSaving] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testEmailSending, setTestEmailSending] = useState(false);
 
   const trialEndDate = profile?.trial_start_date
     ? format(addDays(new Date(profile.trial_start_date), 30), 'PPP')
@@ -59,6 +60,32 @@ export function SettingsPage() {
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleTestConnection() {
+    setTestingConnection(true);
+    try {
+      await testConnection();
+      toast.success('Connection test successful! Your email provider is properly connected.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Connection test failed';
+      toast.error(`Connection test failed: ${message}`);
+    } finally {
+      setTestingConnection(false);
+    }
+  }
+
+  async function handleSendTestEmail() {
+    setTestEmailSending(true);
+    try {
+      await sendTestEmail();
+      toast.success('Test email sent successfully! Please check your inbox.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send test email';
+      toast.error(`Failed to send test email: ${message}`);
+    } finally {
+      setTestEmailSending(false);
     }
   }
 
@@ -115,14 +142,14 @@ export function SettingsPage() {
               <ul className="mt-1 text-sm space-y-1">
                 {profile?.subscription_tier === 'pro' ? (
                   <>
-                    <li>✓ GPT-4 for enhanced accuracy</li>
+                    <li>✓ DeepSeek AI for enhanced accuracy</li>
                     <li>✓ Unlimited emails</li>
                     <li>✓ Priority support</li>
                     <li>✓ Custom processing rules</li>
                   </>
                 ) : (
                   <>
-                    <li>✓ GPT-3.5 for summarization</li>
+                    <li>✓ DeepSeek AI for summarization</li>
                     <li>✓ Up to 50 emails/day</li>
                     <li>✓ Basic email categorization</li>
                     <li>Trial ends: {trialEndDate || 'Ended'}</li>
@@ -148,6 +175,61 @@ export function SettingsPage() {
       </Card>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Email Connection</CardTitle>
+            <CardDescription>
+              Test your email connection and send a test email
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <Button 
+                onClick={handleTestConnection} 
+                disabled={testingConnection}
+                className="flex-1"
+              >
+                {testingConnection ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Testing Connection...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Test Connection
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={handleSendTestEmail} 
+                disabled={testEmailSending}
+                className="flex-1"
+              >
+                {testEmailSending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending Test Email...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Test Email
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p>If you're having connection issues, try the following:</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Check that your email provider is properly connected</li>
+                <li>Ensure you've granted the necessary permissions</li>
+                <li>Try reconnecting your email provider from the dashboard</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Email Settings</CardTitle>
@@ -213,27 +295,10 @@ export function SettingsPage() {
             <CardTitle>AI Settings</CardTitle>
             <CardDescription>
               Configure how AI processes and summarizes your emails.
-              {profile?.subscription_tier === 'free' && (
-                <span className="block mt-1 text-yellow-500">
-                  Upgrade to Pro to use GPT-4 for enhanced accuracy
-                </span>
-              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <DeepSeekSettingsForm />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>SMTP Configuration</CardTitle>
-            <CardDescription>
-              Configure your SMTP server for sending emails
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SMTPConfigForm />
           </CardContent>
         </Card>
 
