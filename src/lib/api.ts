@@ -34,15 +34,24 @@ export async function testConnection() {
       throw new Error('Email provider not configured');
     }
 
+    // Detect provider from email
+    const userEmail = user.email || '';
+    const detectedProvider = detectProviderFromEmail(userEmail);
+    console.log('Detected provider from email:', detectedProvider);
+    
+    // Use detected provider if available, otherwise use the one from settings
+    const providerToUse = detectedProvider || settings.provider;
+    console.log('Using provider for connection test:', providerToUse);
+
     // Check provider connection status
-    console.log('Checking provider connection status for:', settings.provider);
+    console.log('Checking provider connection status for:', providerToUse);
     
     // Get provider credentials - use maybeSingle() instead of single() to handle missing rows gracefully
     const { data: credentials, error: credsError } = await supabase
       .from('email_provider_credentials')
       .select('credentials, is_valid, last_validated')
       .eq('user_id', user.id)
-      .eq('provider', settings.provider)
+      .eq('provider', providerToUse)
       .maybeSingle();
       
     if (credsError) {
@@ -61,7 +70,7 @@ export async function testConnection() {
         .from('provider_connection_status')
         .upsert({
           user_id: user.id,
-          provider: settings.provider,
+          provider: providerToUse,
           status: 'connected',
           last_check: new Date().toISOString(),
           error_message: null
@@ -72,9 +81,9 @@ export async function testConnection() {
         .from('email_provider_credentials')
         .upsert({
           user_id: user.id,
-          provider: settings.provider,
+          provider: providerToUse,
           credentials: {
-            access_token: `simulated_${settings.provider}_token_${Date.now()}`,
+            access_token: `simulated_${providerToUse}_token_${Date.now()}`,
             refresh_token: `simulated_refresh_token_${Date.now()}`,
             expiry_date: new Date(Date.now() + 3600 * 1000).toISOString(),
             email: user.email
@@ -83,16 +92,25 @@ export async function testConnection() {
           last_validated: new Date().toISOString()
         });
         
+      // If the detected provider is different from the settings provider, update the settings
+      if (detectedProvider && detectedProvider !== settings.provider) {
+        console.log(`Updating email settings provider from ${settings.provider} to ${detectedProvider}`);
+        await supabase
+          .from('email_settings')
+          .update({ provider: detectedProvider })
+          .eq('id', settings.id);
+      }
+        
       return {
         success: true,
-        message: `Connection simulated successfully for ${settings.provider.toUpperCase()} in development mode.`,
-        provider: settings.provider
+        message: `Connection simulated successfully for ${providerToUse.toUpperCase()} in development mode.`,
+        provider: providerToUse
       };
     }
     
     if (!credentials.is_valid) {
       console.error('Provider credentials are invalid');
-      throw new Error(`Your ${settings.provider} credentials are invalid. Please reconnect your email provider.`);
+      throw new Error(`Your ${providerToUse} credentials are invalid. Please reconnect your email provider.`);
     }
     
     // Check if tokens need to be refreshed
@@ -111,7 +129,7 @@ export async function testConnection() {
         try {
           // Refresh the tokens
           const refreshedTokens = await refreshOAuthTokens(
-            settings.provider, 
+            providerToUse, 
             credentials.credentials.refresh_token
           );
           
@@ -131,7 +149,7 @@ export async function testConnection() {
               last_validated: new Date().toISOString()
             })
             .eq('user_id', user.id)
-            .eq('provider', settings.provider);
+            .eq('provider', providerToUse);
             
           console.log('OAuth tokens refreshed successfully');
         } catch (refreshError) {
@@ -155,7 +173,7 @@ export async function testConnection() {
           .from('provider_connection_status')
           .upsert({
             user_id: user.id,
-            provider: settings.provider,
+            provider: providerToUse,
             status: 'connected',
             last_check: new Date().toISOString(),
             error_message: null
@@ -168,8 +186,17 @@ export async function testConnection() {
             last_validated: new Date().toISOString()
           })
           .eq('user_id', user.id)
-          .eq('provider', settings.provider);
+          .eq('provider', providerToUse);
       }
+    }
+    
+    // If the detected provider is different from the settings provider, update the settings
+    if (detectedProvider && detectedProvider !== settings.provider) {
+      console.log(`Updating email settings provider from ${settings.provider} to ${detectedProvider}`);
+      await supabase
+        .from('email_settings')
+        .update({ provider: detectedProvider })
+        .eq('id', settings.id);
     }
     
     // Log the successful connection test
@@ -177,7 +204,7 @@ export async function testConnection() {
       .from('email_connection_logs')
       .insert({
         user_id: user.id,
-        provider: settings.provider,
+        provider: providerToUse,
         status: 'test_success',
         details: {
           timestamp: new Date().toISOString()
@@ -186,8 +213,8 @@ export async function testConnection() {
 
     return {
       success: true,
-      message: `Connection test successful! ${settings.provider.toUpperCase()} is properly connected.`,
-      provider: settings.provider
+      message: `Connection test successful! ${providerToUse.toUpperCase()} is properly connected.`,
+      provider: providerToUse
     };
   } catch (error) {
     console.error('Test connection error:', error);
@@ -521,14 +548,30 @@ export async function sendTestEmail() {
       throw new Error('Email provider not configured. Please connect an email provider first.');
     }
 
-    console.log('Using provider:', settings.provider);
+    // Detect provider from email
+    const userEmail = user.email;
+    const detectedProvider = detectProviderFromEmail(userEmail);
+    console.log('Detected provider from email:', detectedProvider);
+    
+    // Use detected provider if available, otherwise use the one from settings
+    const providerToUse = detectedProvider || settings.provider;
+    console.log('Using provider for test email:', providerToUse);
+    
+    // If the detected provider is different from the settings provider, update the settings
+    if (detectedProvider && detectedProvider !== settings.provider) {
+      console.log(`Updating email settings provider from ${settings.provider} to ${detectedProvider}`);
+      await supabase
+        .from('email_settings')
+        .update({ provider: detectedProvider })
+        .eq('id', settings.id);
+    }
     
     // Get provider credentials - use maybeSingle() to handle missing rows gracefully
     const { data: credentials, error: credsError } = await supabase
       .from('email_provider_credentials')
       .select('credentials, is_valid')
       .eq('user_id', user.id)
-      .eq('provider', settings.provider)
+      .eq('provider', providerToUse)
       .maybeSingle();
       
     if (credsError) {
@@ -545,9 +588,9 @@ export async function sendTestEmail() {
         .from('email_provider_credentials')
         .upsert({
           user_id: user.id,
-          provider: settings.provider,
+          provider: providerToUse,
           credentials: {
-            access_token: `simulated_${settings.provider}_token_${Date.now()}`,
+            access_token: `simulated_${providerToUse}_token_${Date.now()}`,
             refresh_token: `simulated_refresh_token_${Date.now()}`,
             expiry_date: new Date(Date.now() + 3600 * 1000).toISOString(),
             email: user.email
@@ -566,7 +609,7 @@ export async function sendTestEmail() {
         .from('provider_connection_status')
         .upsert({
           user_id: user.id,
-          provider: settings.provider,
+          provider: providerToUse,
           status: 'connected',
           last_check: new Date().toISOString(),
           error_message: null
@@ -577,7 +620,7 @@ export async function sendTestEmail() {
         .from('email_connection_logs')
         .insert({
           user_id: user.id,
-          provider: settings.provider,
+          provider: providerToUse,
           status: 'test_email_sent',
           details: {
             recipient: user.email,
@@ -589,7 +632,7 @@ export async function sendTestEmail() {
         
       return {
         success: true,
-        message: `Test email simulated successfully to ${user.email} using ${settings.provider.toUpperCase()} (Development Mode)`
+        message: `Test email simulated successfully to ${user.email} using ${providerToUse.toUpperCase()} (Development Mode)`
       };
     }
     
@@ -612,7 +655,7 @@ export async function sendTestEmail() {
         try {
           // Refresh the tokens
           const refreshedTokens = await refreshOAuthTokens(
-            settings.provider, 
+            providerToUse, 
             credentials.credentials.refresh_token
           );
           
@@ -632,7 +675,7 @@ export async function sendTestEmail() {
               last_validated: new Date().toISOString()
             })
             .eq('user_id', user.id)
-            .eq('provider', settings.provider);
+            .eq('provider', providerToUse);
             
           console.log('OAuth tokens refreshed successfully');
         } catch (refreshError) {
@@ -650,7 +693,7 @@ export async function sendTestEmail() {
       .from('email_connection_logs')
       .insert({
         user_id: user.id,
-        provider: settings.provider,
+        provider: providerToUse,
         status: 'test_email_sent',
         details: {
           recipient: user.email,
@@ -663,7 +706,7 @@ export async function sendTestEmail() {
 
     return {
       success: true,
-      message: `Test email sent successfully to ${user.email} using ${settings.provider.toUpperCase()}`
+      message: `Test email sent successfully to ${user.email} using ${providerToUse.toUpperCase()}`
     };
   } catch (error) {
     console.error('Failed to send test email:', error);
