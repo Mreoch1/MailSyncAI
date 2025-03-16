@@ -8,6 +8,9 @@ import { ProviderAuthPage } from '@/pages/auth/provider-auth';
 import { DashboardPage } from '@/pages/dashboard';
 import { SettingsPage } from '@/pages/settings';
 import { SubscriptionPage } from '@/pages/subscription';
+import { TermsPage } from '@/pages/legal/terms';
+import { PrivacyPage } from '@/pages/legal/privacy';
+import { SecurityPage } from '@/pages/legal/security';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -39,6 +42,11 @@ export function Routes() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/subscription" element={<SubscriptionPage />} />
         </Route>
+        
+        {/* Legal Pages */}
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/security" element={<SecurityPage />} />
       </RouterRoutes>
     </BrowserRouter>
   );

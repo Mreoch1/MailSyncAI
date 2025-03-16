@@ -82,11 +82,14 @@ export function LandingPage() {
             © 2024 MailSyncAI. All rights reserved.
           </p>
           <nav className="flex gap-4 md:ml-auto md:gap-6">
-            <Link className="text-xs text-muted-foreground hover:underline underline-offset-4" to="#">
+            <Link className="text-xs text-muted-foreground hover:underline underline-offset-4" to="/terms">
               Terms of Service
             </Link>
-            <Link className="text-xs text-muted-foreground hover:underline underline-offset-4" to="#">
+            <Link className="text-xs text-muted-foreground hover:underline underline-offset-4" to="/privacy">
               Privacy
+            </Link>
+            <Link className="text-xs text-muted-foreground hover:underline underline-offset-4" to="/security">
+              Security
             </Link>
           </nav>
         </div>
