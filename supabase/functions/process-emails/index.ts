@@ -4,6 +4,8 @@ import { google } from 'https://deno.land/x/google_auth@v1.0.0/mod.ts';
 import { ImapFlow } from 'https://esm.sh/imapflow@1.0.148';
 import { Client } from 'https://deno.land/x/microsoft_graph@v1.0.0/mod.ts';
 import { format } from 'https://deno.land/std@0.208.0/datetime/mod.ts';
+import { simpleParser } from 'https://esm.sh/mailparser@3.6.5';
+import { Nodemailer } from 'https://deno.land/x/nodemailer@v0.1.7/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,6 +35,15 @@ interface ProcessedEmail {
   };
 }
 
+interface TestEmailRequest {
+  action: 'send_test_email';
+  provider: string;
+  to: string;
+  subject: string;
+  body: string;
+  html?: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -56,6 +67,15 @@ serve(async (req) => {
 
     if (authError || !user) {
       throw new Error('Invalid token');
+    }
+    
+    // Parse request body
+    const requestData = await req.json();
+    
+    // Handle test email request
+    if (requestData.action === 'send_test_email') {
+      const testEmailRequest = requestData as TestEmailRequest;
+      return await handleTestEmail(testEmailRequest, user.id, supabaseClient);
     }
 
     // Create new batch
@@ -605,4 +625,151 @@ function formatMeetingList(meetings: any[]): string {
   return meetings
     .map(meeting => `• ${meeting.subject} at ${meeting.time}`)
     .join('\n');
+}
+
+/**
+ * Handle sending a test email using the user's own email provider
+ */
+async function handleTestEmail(
+  request: TestEmailRequest,
+  userId: string,
+  supabase: any
+): Promise<Response> {
+  try {
+    console.log('Handling test email request:', request);
+    
+    // Get user's email provider credentials
+    const { data: credentials, error: credsError } = await supabase
+      .from('email_provider_credentials')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('provider', request.provider)
+      .eq('is_valid', true)
+      .single();
+
+    if (credsError || !credentials) {
+      throw new Error(`Email provider not configured or invalid credentials for ${request.provider}`);
+    }
+    
+    // Send email based on provider
+    if (request.provider === 'gmail') {
+      await sendGmailTestEmail(credentials.credentials, request);
+    } else if (request.provider === 'outlook') {
+      await sendOutlookTestEmail(credentials.credentials, request);
+    } else {
+      throw new Error(`Unsupported provider for test email: ${request.provider}`);
+    }
+    
+    // Log the test email
+    await supabase
+      .from('email_connection_logs')
+      .insert({
+        user_id: userId,
+        provider: request.provider,
+        status: 'test_email_sent',
+        details: {
+          recipient: request.to,
+          subject: request.subject,
+          timestamp: new Date().toISOString()
+        }
+      });
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: `Test email sent to ${request.to} using your ${request.provider.toUpperCase()} account` 
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    );
+  } catch (error) {
+    console.error('Test email error:', error);
+    
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    );
+  }
+}
+
+/**
+ * Send a test email using Gmail API
+ */
+async function sendGmailTestEmail(credentials: any, request: TestEmailRequest) {
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: credentials.access_token,
+    refresh_token: credentials.refresh_token,
+  });
+  
+  // Create the email content
+  const emailContent = [
+    'Content-Type: text/html; charset=utf-8',
+    'MIME-Version: 1.0',
+    `To: ${request.to}`,
+    `Subject: ${request.subject}`,
+    '',
+    request.html || request.body
+  ].join('\r\n');
+  
+  // Encode the email content
+  const encodedEmail = btoa(emailContent).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  
+  // Send the email using Gmail API
+  const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${credentials.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      raw: encodedEmail
+    })
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Gmail API error: ${errorData.error?.message || response.statusText}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Send a test email using Outlook/Microsoft Graph API
+ */
+async function sendOutlookTestEmail(credentials: any, request: TestEmailRequest) {
+  const client = new Client();
+  client.setCredentials({
+    accessToken: credentials.access_token,
+  });
+  
+  // Create the email message
+  const message = {
+    subject: request.subject,
+    body: {
+      contentType: 'HTML',
+      content: request.html || request.body
+    },
+    toRecipients: [
+      {
+        emailAddress: {
+          address: request.to
+        }
+      }
+    ]
+  };
+  
+  // Send the email using Microsoft Graph API
+  const response = await client.api('/me/sendMail').post({
+    message,
+    saveToSentItems: true
+  });
+  
+  return response;
 }
