@@ -45,3 +45,4 @@ build().catch(error => {
   console.error('Unhandled error during build:');
   console.error(error);
   process.exit(1); 
+}); 
