@@ -93,16 +93,48 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
 
       await verifyAuthentication();
 
-      // Set up debounced navigation instead of immediate navigation
-      setPendingNavigation(`/auth/provider?provider=${provider}`);
-      setIsNavigating(true);
-      return true; // Return true to indicate success
+      // Get the client ID from environment variables
+      const clientId = import.meta.env[`VITE_${provider.toUpperCase()}_CLIENT_ID`];
+      if (!clientId) {
+        throw new Error(`${provider} integration is not configured`);
+      }
+
+      // Configure OAuth parameters based on provider
+      const config = PROVIDER_CONFIGS[provider as keyof typeof PROVIDER_CONFIGS];
+      if (!config || config.authType !== 'oauth') {
+        throw new Error('Invalid provider configuration');
+      }
+
+      // Build the OAuth URL based on provider
+      const authUrl = provider === 'outlook' 
+        ? 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
+        : provider === 'gmail'
+          ? 'https://accounts.google.com/o/oauth2/v2.0/auth'
+          : 'https://api.login.yahoo.com/oauth2/request_auth';
+
+      // Set up OAuth parameters
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: `${window.location.origin}/auth/provider`,
+        response_type: 'code',
+        scope: provider === 'outlook'
+          ? 'offline_access Mail.Read Mail.Send Mail.ReadWrite User.Read'
+          : provider === 'gmail'
+            ? 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email'
+            : 'mail-r mail-w',
+        access_type: 'offline',
+        prompt: 'consent'
+      });
+
+      // Redirect to the provider's OAuth page
+      window.location.href = `${authUrl}?${params.toString()}`;
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to connect email provider';
       console.error('OAuth error:', message);
       setError(message);
       toast.error(`Connection failed: ${message}`);
-      return false; // Return false to indicate failure
+      return false;
     } finally {
       setLoading(false);
     }
