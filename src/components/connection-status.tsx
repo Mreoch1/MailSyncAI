@@ -6,6 +6,14 @@ import { Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { EmailProviderForm } from '@/components/email-provider-form';
 
 // Map provider names to display names
 const PROVIDER_DISPLAY_NAMES = {
@@ -54,13 +62,14 @@ function detectProviderFromEmail(email: string): string | null {
 }
 
 export function ConnectionStatus() {
-  const { settings, loading: settingsLoading } = useEmailSettings();
+  const { settings, loading: settingsLoading, refetch } = useEmailSettings();
   const [status, setStatus] = useState<'checking' | 'connected' | 'disconnected' | 'error'>('checking');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [providerName, setProviderName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [detectedProvider, setDetectedProvider] = useState<string | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
   const navigate = useNavigate();
 
   // Get the user's email
@@ -171,20 +180,39 @@ export function ConnectionStatus() {
 
   if (status === 'disconnected' || !settings?.provider) {
     return (
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-yellow-500 border-yellow-500">
-          <AlertTriangle className="h-3 w-3 mr-1" />
-          Not Connected
-        </Badge>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => navigate('/dashboard')}
-          className="ml-2"
-        >
-          Connect Email
-        </Button>
-      </div>
+      <>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-yellow-500 border-yellow-500">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Not Connected
+          </Badge>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowConnectDialog(true)}
+            className="ml-2"
+          >
+            Connect Email
+          </Button>
+        </div>
+
+        <Dialog open={showConnectDialog} onOpenChange={setShowConnectDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Connect Your Email</DialogTitle>
+              <DialogDescription>
+                Connect your email provider to start receiving AI-powered summaries
+              </DialogDescription>
+            </DialogHeader>
+            <EmailProviderForm
+              onSuccess={() => {
+                setShowConnectDialog(false);
+                refetch();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 

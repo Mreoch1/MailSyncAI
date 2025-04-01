@@ -64,25 +64,20 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {!isEmailConnected && (
+      {!isEmailConnected ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center max-w-md mx-auto">
               <h3 className="text-2xl font-semibold mb-2">
-                Connect Your Email
+                Welcome to MailSyncAI
               </h3>
               <p className="text-sm text-muted-foreground mb-6">
-                Connect your email provider to start receiving AI-powered summaries
+                Click the "Connect Email" button in the top right to get started with AI-powered email summaries.
               </p>
-              <EmailProviderForm
-                onSuccess={refreshData}
-              />
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {isEmailConnected && (
+      ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
