@@ -29,29 +29,20 @@ export async function testConnection() {
       throw new Error(`Failed to fetch email settings: ${settingsError.message}`);
     }
 
-    if (!settings) {
-      console.error('No email settings found');
-      throw new Error('Email provider not configured');
+    if (!settings?.provider) {
+      console.error('No email provider configured');
+      throw new Error('Please connect your email provider first');
     }
 
-    // Detect provider from email
-    const userEmail = user.email || '';
-    const detectedProvider = detectProviderFromEmail(userEmail);
-    console.log('Detected provider from email:', detectedProvider);
-    
-    // Use detected provider if available, otherwise use the one from settings
-    const providerToUse = detectedProvider || settings.provider;
-    console.log('Using provider for connection test:', providerToUse);
-
     // Check provider connection status
-    console.log('Checking provider connection status for:', providerToUse);
+    console.log('Checking provider connection status for:', settings.provider);
     
-    // Get provider credentials - use maybeSingle() instead of single() to handle missing rows gracefully
+    // Get provider credentials
     const { data: credentials, error: credsError } = await supabase
       .from('email_provider_credentials')
       .select('credentials, is_valid, last_validated')
       .eq('user_id', user.id)
-      .eq('provider', providerToUse)
+      .eq('provider', settings.provider)
       .maybeSingle();
       
     if (credsError) {
@@ -61,62 +52,15 @@ export async function testConnection() {
     
     if (!credentials) {
       console.error('No provider credentials found');
-      
-      // Create a simulated connection for development/testing
-      console.log('Creating simulated provider connection for testing');
-      
-      // Create a simulated provider connection status
-      await supabase
-        .from('provider_connection_status')
-        .upsert({
-          user_id: user.id,
-          provider: providerToUse,
-          status: 'connected',
-          last_check: new Date().toISOString(),
-          error_message: null
-        });
-        
-      // Create simulated credentials
-      await supabase
-        .from('email_provider_credentials')
-        .upsert({
-          user_id: user.id,
-          provider: providerToUse,
-          credentials: {
-            access_token: `simulated_${providerToUse}_token_${Date.now()}`,
-            refresh_token: `simulated_refresh_token_${Date.now()}`,
-            expiry_date: new Date(Date.now() + 3600 * 1000).toISOString(),
-            email: user.email
-          },
-          is_valid: true,
-          last_validated: new Date().toISOString()
-        });
-        
-      // If the detected provider is different from the settings provider, update the settings
-      if (detectedProvider && detectedProvider !== settings.provider) {
-        console.log(`Updating email settings provider from ${settings.provider} to ${detectedProvider}`);
-        await supabase
-          .from('email_settings')
-          .update({ provider: detectedProvider })
-          .eq('id', settings.id);
-      }
-        
-      return {
-        success: true,
-        message: `Connection simulated successfully for ${providerToUse.toUpperCase()} in development mode.`,
-        provider: providerToUse
-      };
+      throw new Error('No email provider credentials found. Please reconnect your email provider.');
     }
     
     if (!credentials.is_valid) {
       console.error('Provider credentials are invalid');
-      throw new Error(`Your ${providerToUse} credentials are invalid. Please reconnect your email provider.`);
+      throw new Error(`Your ${settings.provider.toUpperCase()} credentials are invalid. Please reconnect your email provider.`);
     }
     
     // Check if tokens need to be refreshed
-    let needsRefresh = false;
-    let updatedCredentials = { ...credentials.credentials };
-    
     if (credentials.credentials.expiry_date) {
       const expiryDate = new Date(credentials.credentials.expiry_date);
       const now = new Date();
@@ -124,105 +68,38 @@ export async function testConnection() {
       // If token expires in less than 5 minutes or is already expired
       if (expiryDate.getTime() - now.getTime() < 5 * 60 * 1000) {
         console.log('OAuth tokens need to be refreshed');
-        needsRefresh = true;
-        
-        try {
-          // Refresh the tokens
-          const refreshedTokens = await refreshOAuthTokens(
-            providerToUse, 
-            credentials.credentials.refresh_token
-          );
-          
-          // Update the credentials with new tokens
-          updatedCredentials = {
-            ...credentials.credentials,
-            access_token: refreshedTokens.access_token,
-            expiry_date: refreshedTokens.expiry_date
-          };
-          
-          // Update the credentials in the database
-          await supabase
-            .from('email_provider_credentials')
-            .update({
-              credentials: updatedCredentials,
-              is_valid: true,
-              last_validated: new Date().toISOString()
-            })
-            .eq('user_id', user.id)
-            .eq('provider', providerToUse);
-            
-          console.log('OAuth tokens refreshed successfully');
-        } catch (refreshError) {
-          console.error('Failed to refresh OAuth tokens:', refreshError);
-          // We'll continue with the existing tokens and let the validation happen
-        }
+        throw new Error(`Your ${settings.provider.toUpperCase()} access has expired. Please reconnect your email provider.`);
       }
     }
     
-    // If we didn't need to refresh tokens or if refresh failed, still update the last_validated timestamp
-    if (!needsRefresh) {
-      // Check if we need to refresh the connection status
-      const lastValidated = credentials.last_validated ? new Date(credentials.last_validated) : null;
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      
-      if (!lastValidated || lastValidated < oneHourAgo) {
-        console.log('Credentials need validation, updating status');
-        
-        // Update the provider connection status
-        await supabase
-          .from('provider_connection_status')
-          .upsert({
-            user_id: user.id,
-            provider: providerToUse,
-            status: 'connected',
-            last_check: new Date().toISOString(),
-            error_message: null
-          });
-          
-        // Update the last_validated timestamp
-        await supabase
-          .from('email_provider_credentials')
-          .update({
-            last_validated: new Date().toISOString()
-          })
-          .eq('user_id', user.id)
-          .eq('provider', providerToUse);
-      }
-    }
-    
-    // If the detected provider is different from the settings provider, update the settings
-    if (detectedProvider && detectedProvider !== settings.provider) {
-      console.log(`Updating email settings provider from ${settings.provider} to ${detectedProvider}`);
-      await supabase
-        .from('email_settings')
-        .update({ provider: detectedProvider })
-        .eq('id', settings.id);
-    }
-    
-    // Log the successful connection test
+    // Update the connection status
     await supabase
-      .from('email_connection_logs')
-      .insert({
+      .from('provider_connection_status')
+      .upsert({
         user_id: user.id,
-        provider: providerToUse,
-        status: 'test_success',
-        details: {
-          timestamp: new Date().toISOString()
-        }
+        provider: settings.provider,
+        status: 'connected',
+        last_check: new Date().toISOString(),
+        error_message: null
       });
+      
+    // Update the last_validated timestamp
+    await supabase
+      .from('email_provider_credentials')
+      .update({
+        last_validated: new Date().toISOString()
+      })
+      .eq('user_id', user.id)
+      .eq('provider', settings.provider);
 
     return {
       success: true,
-      message: `Connection test successful! ${providerToUse.toUpperCase()} is properly connected.`,
-      provider: providerToUse
+      message: `Successfully connected to ${settings.provider.toUpperCase()}`,
+      provider: settings.provider
     };
   } catch (error) {
-    console.error('Test connection error:', error);
-    throw new Error(
-      error instanceof Error 
-        ? error.message 
-        : 'Failed to test email processing'
-    );
+    console.error('Connection test failed:', error);
+    throw error;
   }
 }
 
@@ -517,21 +394,14 @@ export async function sendEmail(templateName: string, to: string, variables: Rec
 
 export async function sendTestEmail() {
   try {
-    console.log('Starting test email process');
+    console.log('Starting test email send');
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (userError) {
-      console.error('Authentication error:', userError);
-      throw new Error(`Authentication failed: ${userError.message}`);
-    }
-    
-    if (!user?.email) {
-      console.error('No user email found');
-      throw new Error('User email not found');
+    if (userError || !user) {
+      throw new Error('Not authenticated');
     }
 
-    console.log('Fetching email settings for user:', user.id);
-    // Get user's email settings
+    // Get email settings
     const { data: settings, error: settingsError } = await supabase
       .from('email_settings')
       .select('*')
@@ -539,226 +409,50 @@ export async function sendTestEmail() {
       .single();
 
     if (settingsError) {
-      console.error('Error fetching email settings:', settingsError);
-      throw new Error(`Failed to fetch email settings: ${settingsError.message}`);
+      throw new Error('Failed to fetch email settings');
     }
 
     if (!settings?.provider) {
-      console.error('No email provider configured');
-      throw new Error('Email provider not configured. Please connect an email provider first.');
+      throw new Error('Please connect your email provider first');
     }
 
-    // Detect provider from email
-    const userEmail = user.email;
-    const detectedProvider = detectProviderFromEmail(userEmail);
-    console.log('Detected provider from email:', detectedProvider);
-    
-    // Use detected provider if available, otherwise use the one from settings
-    const providerToUse = detectedProvider || settings.provider;
-    console.log('Using provider for test email:', providerToUse);
-    
-    // If the detected provider is different from the settings provider, update the settings
-    if (detectedProvider && detectedProvider !== settings.provider) {
-      console.log(`Updating email settings provider from ${settings.provider} to ${detectedProvider}`);
-      await supabase
-        .from('email_settings')
-        .update({ provider: detectedProvider })
-        .eq('id', settings.id);
-    }
-    
-    // Get provider credentials - use maybeSingle() to handle missing rows gracefully
+    // Check for valid credentials
     const { data: credentials, error: credsError } = await supabase
       .from('email_provider_credentials')
       .select('credentials, is_valid')
       .eq('user_id', user.id)
-      .eq('provider', providerToUse)
+      .eq('provider', settings.provider)
       .maybeSingle();
-      
+
     if (credsError) {
-      console.error('Error fetching provider credentials:', credsError);
-      throw new Error('Failed to fetch provider credentials. Please try reconnecting your email provider.');
+      throw new Error('Failed to check email credentials');
     }
-    
-    // If no credentials found, create simulated ones for development/testing
-    if (!credentials) {
-      console.log('No credentials found, creating simulated credentials for testing');
-      
-      // Create simulated credentials
-      const { error: insertError } = await supabase
-        .from('email_provider_credentials')
-        .upsert({
-          user_id: user.id,
-          provider: providerToUse,
-          credentials: {
-            access_token: `simulated_${providerToUse}_token_${Date.now()}`,
-            refresh_token: `simulated_refresh_token_${Date.now()}`,
-            expiry_date: new Date(Date.now() + 3600 * 1000).toISOString(),
-            email: user.email
-          },
-          is_valid: true,
-          last_validated: new Date().toISOString()
-        });
-        
-      if (insertError) {
-        console.error('Error creating simulated credentials:', insertError);
-        throw new Error('Failed to create test credentials. Please try again.');
+
+    if (!credentials || !credentials.is_valid) {
+      throw new Error(`No valid ${settings.provider.toUpperCase()} credentials found. Please reconnect your email provider.`);
+    }
+
+    // Call the Edge Function to send the test email
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: {
+        type: 'test',
+        userId: user.id,
+        provider: settings.provider
       }
-      
-      // Create a simulated provider connection status
-      await supabase
-        .from('provider_connection_status')
-        .upsert({
-          user_id: user.id,
-          provider: providerToUse,
-          status: 'connected',
-          last_check: new Date().toISOString(),
-          error_message: null
-        });
-        
-      // Log the test email attempt
-      await supabase
-        .from('email_connection_logs')
-        .insert({
-          user_id: user.id,
-          provider: providerToUse,
-          status: 'test_email_sent',
-          details: {
-            recipient: user.email,
-            subject: 'MailSyncAI Connection Test',
-            timestamp: new Date().toISOString(),
-            simulated: true
-          }
-        });
-        
-      return {
-        success: true,
-        message: `Test email simulation completed for ${providerToUse.toUpperCase()}. In production, this would send an actual email using your ${providerToUse.toUpperCase()} account.`
-      };
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error('Failed to send test email');
     }
-    
-    if (!credentials.is_valid) {
-      console.error('Provider credentials are invalid');
-      throw new Error('Provider credentials are invalid. Please reconnect your email provider.');
-    }
-    
-    // Check if tokens need to be refreshed
-    let updatedCredentials = { ...credentials.credentials };
-    
-    if (credentials.credentials.expiry_date) {
-      const expiryDate = new Date(credentials.credentials.expiry_date);
-      const now = new Date();
-      
-      // If token expires in less than 5 minutes or is already expired
-      if (expiryDate.getTime() - now.getTime() < 5 * 60 * 1000) {
-        console.log('OAuth tokens need to be refreshed before sending test email');
-        
-        try {
-          // Refresh the tokens
-          const refreshedTokens = await refreshOAuthTokens(
-            providerToUse, 
-            credentials.credentials.refresh_token
-          );
-          
-          // Update the credentials with new tokens
-          updatedCredentials = {
-            ...credentials.credentials,
-            access_token: refreshedTokens.access_token,
-            expiry_date: refreshedTokens.expiry_date
-          };
-          
-          // Update the credentials in the database
-          await supabase
-            .from('email_provider_credentials')
-            .update({
-              credentials: updatedCredentials,
-              is_valid: true,
-              last_validated: new Date().toISOString()
-            })
-            .eq('user_id', user.id)
-            .eq('provider', providerToUse);
-            
-          console.log('OAuth tokens refreshed successfully');
-        } catch (refreshError) {
-          console.error('Failed to refresh OAuth tokens:', refreshError);
-          // Continue with existing tokens
-        }
-      }
-    }
-    
-    // Send a test email using the user's own email provider
-    console.log('Sending test email using user\'s own email provider:', providerToUse);
-    
-    // Get session for authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('Not authenticated');
-    }
-    
-    // Call the process-emails Edge Function with a special flag to send a test email
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-emails`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'send_test_email',
-          provider: providerToUse,
-          to: user.email,
-          subject: 'MailSyncAI Connection Test',
-          body: `This is a test email from MailSyncAI to verify your ${providerToUse.toUpperCase()} connection is working correctly. If you're receiving this, your email connection is properly set up!`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-              <h2 style="color: #4f46e5;">MailSyncAI Connection Test</h2>
-              <p>This is a test email from MailSyncAI to verify your ${providerToUse.toUpperCase()} connection is working correctly.</p>
-              <p>If you're receiving this, your email connection is properly set up!</p>
-              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666;">
-                <p>This is an automated message from MailSyncAI. Please do not reply to this email.</p>
-              </div>
-            </div>
-          `
-        }),
-      }
-    );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }));
-      console.error('Failed to send test email:', errorData);
-      throw new Error(errorData.error || `Failed to send test email: HTTP ${response.status}`);
-    }
-    
-    const responseData = await response.json();
-    console.log('Test email response:', responseData);
-    
-    // Log the test email attempt
-    await supabase
-      .from('email_connection_logs')
-      .insert({
-        user_id: user.id,
-        provider: providerToUse,
-        status: 'test_email_sent',
-        details: {
-          recipient: user.email,
-          subject: 'MailSyncAI Connection Test',
-          timestamp: new Date().toISOString()
-        }
-      });
-      
-    console.log('Test email logged successfully');
 
     return {
       success: true,
-      message: `Test email sent to ${user.email} using your ${providerToUse.toUpperCase()} account. Please check your inbox (and spam folder).`
+      message: 'Test email sent successfully! Please check your inbox.'
     };
   } catch (error) {
-    console.error('Failed to send test email:', error);
-    // Provide more detailed error message
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : 'Unknown error occurred while sending test email';
-    throw new Error(errorMessage);
+    console.error('Send test email error:', error);
+    throw error;
   }
 }
 
