@@ -987,34 +987,16 @@ export async function disconnectEmailProvider() {
       throw new Error('Failed to fetch current settings');
     }
 
-    // Delete provider credentials
-    const { error: credsError } = await supabase
-      .from('email_provider_credentials')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (credsError) {
-      throw new Error('Failed to remove provider credentials');
-    }
-
-    // Delete provider connection status
-    await supabase
-      .from('provider_connection_status')
-      .delete()
-      .eq('user_id', user.id);
-
-    // Handle email settings update or creation
+    // First update email settings to remove provider reference
     const settingsData = {
       provider: null,
       sync_enabled: false,
       last_sync: null,
       sync_frequency: null,
       sync_status: null,
-      user_id: user.id,
       updated_at: new Date().toISOString()
     };
 
-    let settingsResult;
     if (currentSettings) {
       // Update existing settings
       const { error: updateError } = await supabase
@@ -1031,6 +1013,7 @@ export async function disconnectEmailProvider() {
         .from('email_settings')
         .insert({
           ...settingsData,
+          user_id: user.id,
           summary_time: '09:00', // Default summary time
           important_only: false,  // Default value
           created_at: new Date().toISOString()
@@ -1039,6 +1022,22 @@ export async function disconnectEmailProvider() {
       if (insertError) {
         throw new Error('Failed to create email settings');
       }
+    }
+
+    // Then delete provider connection status
+    await supabase
+      .from('provider_connection_status')
+      .delete()
+      .eq('user_id', user.id);
+
+    // Finally delete provider credentials
+    const { error: credsError } = await supabase
+      .from('email_provider_credentials')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (credsError) {
+      throw new Error('Failed to remove provider credentials');
     }
 
     // Log the disconnection

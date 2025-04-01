@@ -22,7 +22,7 @@ import type { EmailSettings } from '@/types/database';
 import { format, addDays } from 'date-fns';
 
 export function SettingsPage() {
-  const { settings, loading } = useEmailSettings();
+  const { settings, loading, refetch } = useEmailSettings();
   const { profile } = useProfile();
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
@@ -104,8 +104,7 @@ export function SettingsPage() {
     try {
       await disconnectEmailProvider();
       toast.success('Email provider disconnected successfully');
-      // Refresh the page to update the UI
-      window.location.reload();
+      refetch();
     } catch (error) {
       console.error('Failed to disconnect:', error);
       const message = error instanceof Error ? error.message : 'Failed to disconnect email provider';
