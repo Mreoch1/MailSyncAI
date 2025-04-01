@@ -987,10 +987,12 @@ export async function disconnectEmailProvider() {
       throw new Error('Failed to fetch current settings');
     }
 
-    // First update email settings to remove provider reference
-    // Only include fields that exist in the database schema
+    // Detect default provider from user's email
+    const defaultProvider = detectProviderFromEmail(user.email || '');
+
+    // First update email settings to set default provider
     const settingsData = {
-      provider: null,
+      provider: defaultProvider, // Set default provider instead of null
       summary_time: currentSettings?.summary_time || '09:00',
       important_only: currentSettings?.important_only ?? false,
       user_id: user.id
@@ -1048,11 +1050,13 @@ export async function disconnectEmailProvider() {
       .from('email_connection_logs')
       .insert({
         user_id: user.id,
-        provider: currentSettings?.provider || 'unknown',
+        provider: currentSettings?.provider || defaultProvider,
         status: 'success',
         details: {
           action: 'disconnect',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          previous_provider: currentSettings?.provider,
+          new_provider: defaultProvider
         }
       });
 
