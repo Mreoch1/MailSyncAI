@@ -150,61 +150,56 @@ export function ConnectionStatus() {
 
         if (error) {
           console.error('Error fetching connection status:', error);
-          
-          // Try to create a simulated connection
-          if (user.email && settings.provider) {
-            const success = await createSimulatedConnection(user.id, settings.provider, user.email);
-            if (success) return;
-          }
-          
           setStatus('error');
           setErrorMessage('Failed to check connection status');
           return;
         }
 
-        // If no status found, create a simulated connection
-        if (!status) {
-          console.log('No connection status found, creating simulated connection');
-          if (user.email && settings.provider) {
-            const success = await createSimulatedConnection(user.id, settings.provider, user.email);
-            if (success) return;
-          }
-          
+        // Check provider credentials
+        const { data: credentials, error: credsError } = await supabase
+          .from('email_provider_credentials')
+          .select('is_valid')
+          .eq('user_id', user.id)
+          .eq('provider', settings.provider)
+          .maybeSingle();
+
+        if (credsError) {
+          console.error('Error fetching credentials:', credsError);
           setStatus('error');
-          setErrorMessage('No connection status found');
+          setErrorMessage('Failed to check credentials');
           return;
         }
 
-        if (status?.status === 'connected') {
+        // If no status or credentials found, mark as disconnected
+        if (!status || !credentials) {
+          console.log('No connection status or credentials found');
+          setStatus('disconnected');
+          setErrorMessage(null);
+          setProviderName(null);
+          return;
+        }
+
+        if (status?.status === 'connected' && credentials?.is_valid) {
           setStatus('connected');
-          
-          // Use detected provider if available, otherwise fall back to the one from settings
           let displayProvider = status.provider || settings.provider;
-          
-          // If we have a detected provider from the user's email, use that instead
-          if (detectedProvider && userEmail) {
-            console.log('Using detected provider:', detectedProvider);
-            displayProvider = detectedProvider;
-          }
-          
-          // Use the display name mapping or fallback to uppercase provider name
           setProviderName(PROVIDER_DISPLAY_NAMES[displayProvider] || displayProvider.toUpperCase());
         } else {
-          setStatus('error');
+          setStatus('disconnected');
           setErrorMessage(status?.error_message || 'Provider not connected');
+          setProviderName(null);
         }
       } catch (error) {
-        console.error('Connection test failed:', error);
+        console.error('Connection check failed:', error);
         setStatus('error');
-        const message = error instanceof Error ? error.message : 'Connection test failed';
+        const message = error instanceof Error ? error.message : 'Connection check failed';
         setErrorMessage(message);
       }
     }
 
-    if (settings) {
+    if (!settingsLoading) {
       checkConnection();
     }
-  }, [settings, userEmail, detectedProvider]);
+  }, [settings, settingsLoading, detectedProvider, userEmail]);
 
   if (settingsLoading) {
     return (
@@ -215,37 +210,38 @@ export function ConnectionStatus() {
     );
   }
 
+  if (status === 'connected' && providerName) {
+    return (
+      <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800">
+        <CheckCircle2 className="h-3 w-3" />
+        Connected to {providerName}
+        {isSimulated && ' (Dev)'}
+      </Badge>
+    );
+  }
+
+  if (status === 'error' && errorMessage) {
+    return (
+      <Badge variant="outline" className="gap-1 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800">
+        <XCircle className="h-3 w-3" />
+        {errorMessage}
+      </Badge>
+    );
+  }
+
   if (status === 'checking') {
     return (
       <Badge variant="outline" className="gap-1">
         <Loader2 className="h-3 w-3 animate-spin" />
-        Testing connection...
-      </Badge>
-    );
-  }
-
-  if (status === 'connected') {
-    return (
-      <Badge variant="success" className="gap-1">
-        <CheckCircle2 className="h-3 w-3" />
-        Connected to {providerName} {isSimulated && "(Dev Mode)"}
-      </Badge>
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <Badge variant="destructive" className="gap-1">
-        <AlertTriangle className="h-3 w-3" />
-        {errorMessage || 'Connection error'}
+        Checking connection...
       </Badge>
     );
   }
 
   return (
-    <Badge variant="destructive" className="gap-1">
-      <XCircle className="h-3 w-3" />
-      Not connected
+    <Badge variant="outline" className="gap-1 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-800">
+      <AlertTriangle className="h-3 w-3" />
+      Not Connected
     </Badge>
   );
 }
