@@ -52,103 +52,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-            <p className="text-muted-foreground">
-              Welcome to your email management dashboard.
-            </p>
-          </div>
-          <ConnectionStatus />
-        </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Emails
-            </CardTitle>
-            <Mail className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {latestSummary
-                ? latestSummary.important_emails.length +
-                  latestSummary.general_updates.length +
-                  latestSummary.low_priority.length
-                : 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Processed today
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Upcoming Meetings
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {latestSummary?.important_emails.filter((email) =>
-                email.subject.toLowerCase().includes('meeting')
-              ).length ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Next in 2 hours
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pending Tasks
-            </CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {latestSummary?.important_emails.length ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Important emails today
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {latestSummary ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          <EmailSummaryCard
-            title="Important Emails"
-            emails={latestSummary.important_emails}
-          />
-          <EmailSummaryCard
-            title="General Updates"
-            emails={latestSummary.general_updates}
-          />
-          <EmailSummaryCard
-            title="Low Priority"
-            emails={latestSummary.low_priority}
-          />
-        </div>
-      ) : isEmailConnected ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center max-w-md mx-auto">
-              <h3 className="text-2xl font-semibold mb-2">
-                No Email Summaries Yet
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Your email is connected, but we haven't processed any emails yet. Check back soon!
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
+      {!isEmailConnected && (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center max-w-md mx-auto">
@@ -164,6 +68,69 @@ export function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {isEmailConnected && (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Emails Processed
+                </CardTitle>
+                <Mail className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {latestSummary?.stats?.total || 0}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Meetings Found
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {latestSummary?.meetings?.length || 0}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Action Items
+                </CardTitle>
+                <Bell className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {latestSummary?.action_items?.length || 0}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {latestSummary ? (
+            <EmailSummaryCard summary={latestSummary} />
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center max-w-md mx-auto">
+                  <h3 className="text-2xl font-semibold mb-2">
+                    No Email Summaries Yet
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Your email is connected, but we haven't processed any emails yet. Check back soon!
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );

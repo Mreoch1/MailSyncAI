@@ -4,6 +4,8 @@ import { useEmailSettings } from '@/hooks/use-email-settings';
 import { supabase } from '@/lib/supabase';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 // Map provider names to display names
 const PROVIDER_DISPLAY_NAMES = {
@@ -59,6 +61,7 @@ export function ConnectionStatus() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [detectedProvider, setDetectedProvider] = useState<string | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
+  const navigate = useNavigate();
 
   // Get the user's email
   useEffect(() => {
@@ -201,47 +204,43 @@ export function ConnectionStatus() {
     }
   }, [settings, settingsLoading, detectedProvider, userEmail]);
 
-  if (settingsLoading) {
+  if (status === 'disconnected' || !settings?.provider) {
     return (
-      <Badge variant="outline" className="gap-1">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Checking connection...
-      </Badge>
-    );
-  }
-
-  if (status === 'connected' && providerName) {
-    return (
-      <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800">
-        <CheckCircle2 className="h-3 w-3" />
-        Connected to {providerName}
-        {isSimulated && ' (Dev)'}
-      </Badge>
-    );
-  }
-
-  if (status === 'error' && errorMessage) {
-    return (
-      <Badge variant="outline" className="gap-1 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800">
-        <XCircle className="h-3 w-3" />
-        {errorMessage}
-      </Badge>
-    );
-  }
-
-  if (status === 'checking') {
-    return (
-      <Badge variant="outline" className="gap-1">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Checking connection...
-      </Badge>
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-yellow-500 border-yellow-500">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Not Connected
+        </Badge>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate('/dashboard')}
+          className="ml-2"
+        >
+          Connect Email
+        </Button>
+      </div>
     );
   }
 
   return (
-    <Badge variant="outline" className="gap-1 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-800">
-      <AlertTriangle className="h-3 w-3" />
-      Not Connected
-    </Badge>
+    <div className="flex items-center gap-2">
+      {status === 'checking' ? (
+        <Badge variant="outline" className="animate-pulse">
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          Checking...
+        </Badge>
+      ) : status === 'connected' ? (
+        <Badge variant="outline" className="text-green-500 border-green-500">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Connected to {providerName}
+        </Badge>
+      ) : (
+        <Badge variant="outline" className="text-red-500 border-red-500">
+          <XCircle className="h-3 w-3 mr-1" />
+          {errorMessage || 'Connection Error'}
+        </Badge>
+      )}
+    </div>
   );
 }
