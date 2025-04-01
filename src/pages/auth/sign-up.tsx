@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,40 +10,66 @@ import { toast } from 'sonner';
 
 export function SignUpPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Handle navigation after successful sign-up
+  useEffect(() => {
+    if (isNavigating) {
+      const timer = setTimeout(() => {
+        navigate('/sign-in', { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isNavigating, navigate]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
-
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
+    
+    // Prevent multiple submissions
+    if (loading || isNavigating) {
       return;
     }
+    
+    setLoading(true);
 
-    if (data?.user) {
-      try {
-        await sendEmail('welcome', email);
-      } catch (error) {
-        console.error('Failed to send welcome email:', error);
+    try {
+      const formData = new FormData(event.currentTarget);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
       }
-    }
 
-    toast.success('Check your email to continue sign up process');
-    navigate('/sign-in');
+      if (data?.user) {
+        try {
+          await sendEmail('welcome', email);
+        } catch (error) {
+          console.error('Failed to send welcome email:', error);
+        }
+      }
+
+      toast.success('Check your email to continue sign up process');
+      setIsNavigating(true);
+    } catch (error) {
+      console.error('Sign up error:', error);
+      const message = error instanceof Error ? error.message : 'Failed to sign up';
+      toast.error(message);
+      setLoading(false);
+    }
   }
 
   return (
@@ -75,7 +101,7 @@ export function SignUpPage() {
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect="off"
-            disabled={loading}
+            disabled={loading || isNavigating}
             required
           />
         </div>
@@ -85,12 +111,12 @@ export function SignUpPage() {
             id="password"
             name="password"
             type="password"
-            disabled={loading}
+            disabled={loading || isNavigating}
             required
           />
         </div>
-        <Button className="w-full" type="submit" disabled={loading}>
-          {loading ? 'Creating account...' : 'Create Account'}
+        <Button className="w-full" type="submit" disabled={loading || isNavigating}>
+          {loading ? 'Creating account...' : isNavigating ? 'Redirecting...' : 'Create Account'}
         </Button>
       </form>
     </div>

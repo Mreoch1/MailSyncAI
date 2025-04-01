@@ -2,7 +2,7 @@ import { serve } from 'https://deno.fresh.dev/std@v1/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { google } from 'https://deno.land/x/google_auth@v1.0.0/mod.ts';
 import { ImapFlow } from 'https://esm.sh/imapflow@1.0.148';
-import { Client } from 'https://deno.land/x/microsoft_graph@v1.0.0/mod.ts';
+import { Client } from 'https://esm.sh/@microsoft/microsoft-graph-client@3.0.7';
 import { format } from 'https://deno.land/std@0.208.0/datetime/mod.ts';
 import { simpleParser } from 'https://esm.sh/mailparser@3.6.5';
 import { Nodemailer } from 'https://deno.land/x/nodemailer@v0.1.7/mod.ts';
@@ -744,32 +744,42 @@ async function sendGmailTestEmail(credentials: any, request: TestEmailRequest) {
  * Send a test email using Outlook/Microsoft Graph API
  */
 async function sendOutlookTestEmail(credentials: any, request: TestEmailRequest) {
-  const client = new Client();
-  client.setCredentials({
-    accessToken: credentials.access_token,
-  });
-  
-  // Create the email message
-  const message = {
-    subject: request.subject,
-    body: {
-      contentType: 'HTML',
-      content: request.html || request.body
-    },
-    toRecipients: [
-      {
-        emailAddress: {
-          address: request.to
-        }
+  try {
+    // Initialize the Microsoft Graph client
+    const client = Client.init({
+      authProvider: (done) => {
+        done(null, credentials.access_token);
       }
-    ]
-  };
-  
-  // Send the email using Microsoft Graph API
-  const response = await client.api('/me/sendMail').post({
-    message,
-    saveToSentItems: true
-  });
-  
-  return response;
+    });
+    
+    // Create the email message
+    const message = {
+      subject: request.subject,
+      body: {
+        contentType: 'HTML',
+        content: request.html || request.body
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: request.to
+          }
+        }
+      ]
+    };
+    
+    console.log('Sending Outlook test email to:', request.to);
+    
+    // Send the email using Microsoft Graph API
+    const response = await client.api('/me/sendMail').post({
+      message,
+      saveToSentItems: true
+    });
+    
+    console.log('Outlook test email sent successfully');
+    return response;
+  } catch (error) {
+    console.error('Failed to send Outlook test email:', error);
+    throw new Error(`Failed to send Outlook test email: ${error.message || 'Unknown error'}`);
+  }
 }

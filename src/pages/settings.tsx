@@ -13,9 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useEmailSettings } from '@/hooks/use-email-settings';
-import { Loader2, ExternalLink, Mail, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, ExternalLink, Mail, RefreshCw, CheckCircle, AlertTriangle, Power } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
-import { updateEmailSettings, sendTestEmail, testConnection } from '@/lib/api';
+import { updateEmailSettings, sendTestEmail, testConnection, disconnectEmailProvider } from '@/lib/api';
 import { DeepSeekSettingsForm } from '@/components/gpt-settings-form';
 import { toast } from 'sonner';
 import type { EmailSettings } from '@/types/database';
@@ -27,6 +27,7 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [testEmailSending, setTestEmailSending] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const trialEndDate = profile?.trial_start_date
     ? format(addDays(new Date(profile.trial_start_date), 30), 'PPP')
@@ -95,6 +96,22 @@ export function SettingsPage() {
       toast.error(`Failed to send test email: ${message}`);
     } finally {
       setTestEmailSending(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    try {
+      await disconnectEmailProvider();
+      toast.success('Email provider disconnected successfully');
+      // Refresh the page to update the UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to disconnect:', error);
+      const message = error instanceof Error ? error.message : 'Failed to disconnect email provider';
+      toast.error(message);
+    } finally {
+      setDisconnecting(false);
     }
   }
 
@@ -195,7 +212,7 @@ export function SettingsPage() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <Button 
                 onClick={handleTestConnection} 
-                disabled={testingConnection}
+                disabled={testingConnection || !settings?.provider}
                 className="flex-1"
               >
                 {testingConnection ? (
@@ -212,7 +229,7 @@ export function SettingsPage() {
               </Button>
               <Button 
                 onClick={handleSendTestEmail} 
-                disabled={testEmailSending}
+                disabled={testEmailSending || !settings?.provider}
                 className="flex-1"
               >
                 {testEmailSending ? (
@@ -224,6 +241,24 @@ export function SettingsPage() {
                   <>
                     <Mail className="mr-2 h-4 w-4" />
                     Send Test Email
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleDisconnect}
+                disabled={disconnecting || !settings?.provider}
+                variant="destructive"
+                className="flex-1"
+              >
+                {disconnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Disconnecting...
+                  </>
+                ) : (
+                  <>
+                    <Power className="mr-2 h-4 w-4" />
+                    Disconnect
                   </>
                 )}
               </Button>

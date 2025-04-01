@@ -966,3 +966,54 @@ export async function updateGPTSettings(settings: {
   
   return updateDeepSeekSettings(deepseekSettings);
 }
+
+export async function disconnectEmailProvider() {
+  try {
+    console.log('Starting email provider disconnection');
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      throw new Error('Not authenticated');
+    }
+
+    // Delete provider credentials
+    const { error: credsError } = await supabase
+      .from('email_provider_credentials')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (credsError) {
+      throw new Error('Failed to remove provider credentials');
+    }
+
+    // Reset email settings
+    const { error: settingsError } = await supabase
+      .from('email_settings')
+      .update({ provider: null })
+      .eq('user_id', user.id);
+
+    if (settingsError) {
+      throw new Error('Failed to update email settings');
+    }
+
+    // Log the disconnection
+    await supabase
+      .from('email_connection_logs')
+      .insert({
+        user_id: user.id,
+        provider: 'disconnected',
+        status: 'success',
+        details: {
+          timestamp: new Date().toISOString()
+        }
+      });
+
+    return {
+      success: true,
+      message: 'Email provider disconnected successfully'
+    };
+  } catch (error) {
+    console.error('Failed to disconnect email provider:', error);
+    throw error;
+  }
+}
