@@ -988,13 +988,9 @@ export async function disconnectEmailProvider() {
     }
 
     // First update email settings to remove provider reference
+    // Only include fields that exist in the database schema
     const settingsData = {
       provider: null,
-      sync_enabled: false,
-      last_sync: null,
-      sync_frequency: null,
-      sync_status: null,
-      updated_at: new Date().toISOString(),
       summary_time: currentSettings?.summary_time || '09:00',
       important_only: currentSettings?.important_only ?? false,
       user_id: user.id
@@ -1004,12 +1000,8 @@ export async function disconnectEmailProvider() {
       // Update existing settings
       const { error: updateError } = await supabase
         .from('email_settings')
-        .update({
-          ...settingsData,
-          id: currentSettings.id // Ensure we keep the same ID
-        })
-        .eq('id', currentSettings.id)
-        .select();
+        .update(settingsData)
+        .eq('id', currentSettings.id);
 
       if (updateError) {
         console.error('Failed to update settings:', updateError);
@@ -1022,8 +1014,7 @@ export async function disconnectEmailProvider() {
         .insert({
           ...settingsData,
           created_at: new Date().toISOString()
-        })
-        .select();
+        });
 
       if (insertError) {
         console.error('Failed to create settings:', insertError);
@@ -1031,7 +1022,7 @@ export async function disconnectEmailProvider() {
       }
     }
 
-    // Then delete provider connection status
+    // Delete provider connection status
     const { error: statusError } = await supabase
       .from('provider_connection_status')
       .delete()
@@ -1041,7 +1032,7 @@ export async function disconnectEmailProvider() {
       console.error('Failed to delete connection status:', statusError);
     }
 
-    // Finally delete provider credentials
+    // Delete provider credentials
     const { error: credsError } = await supabase
       .from('email_provider_credentials')
       .delete()
