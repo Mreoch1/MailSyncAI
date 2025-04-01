@@ -976,6 +976,15 @@ export async function disconnectEmailProvider() {
       throw new Error('Not authenticated');
     }
 
+    // Get current provider before deletion
+    const { data: currentSettings } = await supabase
+      .from('email_settings')
+      .select('provider')
+      .eq('user_id', user.id)
+      .single();
+
+    const currentProvider = currentSettings?.provider;
+
     // Delete provider credentials
     const { error: credsError } = await supabase
       .from('email_provider_credentials')
@@ -986,10 +995,22 @@ export async function disconnectEmailProvider() {
       throw new Error('Failed to remove provider credentials');
     }
 
+    // Delete provider connection status
+    await supabase
+      .from('provider_connection_status')
+      .delete()
+      .eq('user_id', user.id);
+
     // Reset email settings
     const { error: settingsError } = await supabase
       .from('email_settings')
-      .update({ provider: null })
+      .update({ 
+        provider: null,
+        sync_enabled: false,
+        last_sync: null,
+        sync_frequency: null,
+        sync_status: null
+      })
       .eq('user_id', user.id);
 
     if (settingsError) {
@@ -1001,9 +1022,10 @@ export async function disconnectEmailProvider() {
       .from('email_connection_logs')
       .insert({
         user_id: user.id,
-        provider: 'disconnected',
+        provider: currentProvider || 'unknown',
         status: 'success',
         details: {
+          action: 'disconnect',
           timestamp: new Date().toISOString()
         }
       });
@@ -1014,6 +1036,24 @@ export async function disconnectEmailProvider() {
     };
   } catch (error) {
     console.error('Failed to disconnect email provider:', error);
+    
+    // Log the failure
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('email_connection_logs')
+        .insert({
+          user_id: user.id,
+          provider: 'unknown',
+          status: 'error',
+          details: {
+            action: 'disconnect',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+          }
+        });
+    }
+    
     throw error;
   }
 }
