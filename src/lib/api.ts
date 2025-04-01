@@ -994,18 +994,26 @@ export async function disconnectEmailProvider() {
       last_sync: null,
       sync_frequency: null,
       sync_status: null,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      summary_time: currentSettings?.summary_time || '09:00',
+      important_only: currentSettings?.important_only ?? false,
+      user_id: user.id
     };
 
-    if (currentSettings) {
+    if (currentSettings?.id) {
       // Update existing settings
       const { error: updateError } = await supabase
         .from('email_settings')
-        .update(settingsData)
-        .eq('user_id', user.id);
+        .update({
+          ...settingsData,
+          id: currentSettings.id // Ensure we keep the same ID
+        })
+        .eq('id', currentSettings.id)
+        .select();
 
       if (updateError) {
-        throw new Error('Failed to update email settings');
+        console.error('Failed to update settings:', updateError);
+        throw new Error(`Failed to update email settings: ${updateError.message}`);
       }
     } else {
       // Create new settings
@@ -1013,22 +1021,25 @@ export async function disconnectEmailProvider() {
         .from('email_settings')
         .insert({
           ...settingsData,
-          user_id: user.id,
-          summary_time: '09:00', // Default summary time
-          important_only: false,  // Default value
           created_at: new Date().toISOString()
-        });
+        })
+        .select();
 
       if (insertError) {
-        throw new Error('Failed to create email settings');
+        console.error('Failed to create settings:', insertError);
+        throw new Error(`Failed to create email settings: ${insertError.message}`);
       }
     }
 
     // Then delete provider connection status
-    await supabase
+    const { error: statusError } = await supabase
       .from('provider_connection_status')
       .delete()
       .eq('user_id', user.id);
+
+    if (statusError) {
+      console.error('Failed to delete connection status:', statusError);
+    }
 
     // Finally delete provider credentials
     const { error: credsError } = await supabase
@@ -1037,7 +1048,8 @@ export async function disconnectEmailProvider() {
       .eq('user_id', user.id);
 
     if (credsError) {
-      throw new Error('Failed to remove provider credentials');
+      console.error('Failed to delete credentials:', credsError);
+      throw new Error(`Failed to remove provider credentials: ${credsError.message}`);
     }
 
     // Log the disconnection
