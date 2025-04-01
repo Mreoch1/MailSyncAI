@@ -976,14 +976,16 @@ export async function disconnectEmailProvider() {
       throw new Error('Not authenticated');
     }
 
-    // Get current provider before deletion
-    const { data: currentSettings } = await supabase
+    // Get current settings to check if they exist
+    const { data: currentSettings, error: settingsError } = await supabase
       .from('email_settings')
-      .select('provider')
+      .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    const currentProvider = currentSettings?.provider;
+    if (settingsError) {
+      throw new Error('Failed to fetch current settings');
+    }
 
     // Delete provider credentials
     const { error: credsError } = await supabase
@@ -1001,20 +1003,42 @@ export async function disconnectEmailProvider() {
       .delete()
       .eq('user_id', user.id);
 
-    // Reset email settings
-    const { error: settingsError } = await supabase
-      .from('email_settings')
-      .update({ 
-        provider: null,
-        sync_enabled: false,
-        last_sync: null,
-        sync_frequency: null,
-        sync_status: null
-      })
-      .eq('user_id', user.id);
+    // Handle email settings update or creation
+    const settingsData = {
+      provider: null,
+      sync_enabled: false,
+      last_sync: null,
+      sync_frequency: null,
+      sync_status: null,
+      user_id: user.id,
+      updated_at: new Date().toISOString()
+    };
 
-    if (settingsError) {
-      throw new Error('Failed to update email settings');
+    let settingsResult;
+    if (currentSettings) {
+      // Update existing settings
+      const { error: updateError } = await supabase
+        .from('email_settings')
+        .update(settingsData)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        throw new Error('Failed to update email settings');
+      }
+    } else {
+      // Create new settings
+      const { error: insertError } = await supabase
+        .from('email_settings')
+        .insert({
+          ...settingsData,
+          summary_time: '09:00', // Default summary time
+          important_only: false,  // Default value
+          created_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        throw new Error('Failed to create email settings');
+      }
     }
 
     // Log the disconnection
@@ -1022,7 +1046,7 @@ export async function disconnectEmailProvider() {
       .from('email_connection_logs')
       .insert({
         user_id: user.id,
-        provider: currentProvider || 'unknown',
+        provider: currentSettings?.provider || 'unknown',
         status: 'success',
         details: {
           action: 'disconnect',
