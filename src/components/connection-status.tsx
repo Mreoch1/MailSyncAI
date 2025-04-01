@@ -124,73 +124,29 @@ export function ConnectionStatus() {
     }
   }
 
+  // Get connection status
   useEffect(() => {
     async function checkConnection() {
       if (!settings?.provider) {
         setStatus('disconnected');
-        setErrorMessage(null);
-        setProviderName(null);
         return;
       }
 
       try {
-        setStatus('checking');
-        setErrorMessage(null);
-        
-        // Get the current user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('Not authenticated');
-        }
-        
-        // Check provider connection status
-        const { data: status, error } = await supabase
-          .from('provider_connection_status')
-          .select('status, error_message, provider')
-          .eq('user_id', user.id)
-          .eq('provider', settings.provider)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching connection status:', error);
-          setStatus('error');
-          setErrorMessage('Failed to check connection status');
-          return;
-        }
-
-        // Check provider credentials
-        const { data: credentials, error: credsError } = await supabase
+        const { data: credentials } = await supabase
           .from('email_provider_credentials')
           .select('is_valid')
-          .eq('user_id', user.id)
+          .eq('user_id', settings.user_id)
           .eq('provider', settings.provider)
-          .maybeSingle();
+          .single();
 
-        if (credsError) {
-          console.error('Error fetching credentials:', credsError);
-          setStatus('error');
-          setErrorMessage('Failed to check credentials');
+        if (!credentials?.is_valid) {
+          setStatus('disconnected');
           return;
         }
 
-        // If no status or credentials found, mark as disconnected
-        if (!status || !credentials) {
-          console.log('No connection status or credentials found');
-          setStatus('disconnected');
-          setErrorMessage(null);
-          setProviderName(null);
-          return;
-        }
-
-        if (status?.status === 'connected' && credentials?.is_valid) {
-          setStatus('connected');
-          let displayProvider = status.provider || settings.provider;
-          setProviderName(PROVIDER_DISPLAY_NAMES[displayProvider] || displayProvider.toUpperCase());
-        } else {
-          setStatus('disconnected');
-          setErrorMessage(status?.error_message || 'Provider not connected');
-          setProviderName(null);
-        }
+        setStatus('connected');
+        setProviderName(PROVIDER_DISPLAY_NAMES[settings.provider] || settings.provider.toUpperCase());
       } catch (error) {
         console.error('Connection check failed:', error);
         setStatus('error');
@@ -202,7 +158,16 @@ export function ConnectionStatus() {
     if (!settingsLoading) {
       checkConnection();
     }
-  }, [settings, settingsLoading, detectedProvider, userEmail]);
+  }, [settings, settingsLoading]);
+
+  if (settingsLoading) {
+    return (
+      <Badge variant="outline" className="animate-pulse">
+        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+        Checking...
+      </Badge>
+    );
+  }
 
   if (status === 'disconnected' || !settings?.provider) {
     return (
@@ -223,24 +188,19 @@ export function ConnectionStatus() {
     );
   }
 
+  if (status === 'connected') {
+    return (
+      <Badge variant="outline" className="text-green-500 border-green-500">
+        <CheckCircle2 className="h-3 w-3 mr-1" />
+        Connected to {providerName}
+      </Badge>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-2">
-      {status === 'checking' ? (
-        <Badge variant="outline" className="animate-pulse">
-          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          Checking...
-        </Badge>
-      ) : status === 'connected' ? (
-        <Badge variant="outline" className="text-green-500 border-green-500">
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Connected to {providerName}
-        </Badge>
-      ) : (
-        <Badge variant="outline" className="text-red-500 border-red-500">
-          <XCircle className="h-3 w-3 mr-1" />
-          {errorMessage || 'Connection Error'}
-        </Badge>
-      )}
-    </div>
+    <Badge variant="outline" className="text-red-500 border-red-500">
+      <XCircle className="h-3 w-3 mr-1" />
+      {errorMessage || 'Connection Error'}
+    </Badge>
   );
 }

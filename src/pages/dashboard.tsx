@@ -52,6 +52,18 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+            <p className="text-muted-foreground">
+              Welcome to your email management dashboard.
+            </p>
+          </div>
+          <ConnectionStatus />
+        </div>
+      </div>
+
       {!isEmailConnected && (
         <Card>
           <CardContent className="pt-6">
