@@ -433,11 +433,21 @@ export async function sendTestEmail() {
     }
 
     // Call the Edge Function to send the test email
-    const { data, error } = await supabase.functions.invoke('send-email', {
+    const { data, error } = await supabase.functions.invoke('process-emails', {
       body: {
-        type: 'test',
-        userId: user.id,
-        provider: settings.provider
+        action: 'send_test_email',
+        provider: settings.provider,
+        to: user.email,
+        subject: 'MailSyncAI Test Email',
+        body: 'This is a test email from MailSyncAI to verify your email connection.',
+        html: `
+          <h2>MailSyncAI Test Email</h2>
+          <p>This is a test email from MailSyncAI to verify your email connection.</p>
+          <p>If you're seeing this, your email connection is working correctly!</p>
+          <br>
+          <p>Best regards,</p>
+          <p>The MailSyncAI Team</p>
+        `
       }
     });
 
