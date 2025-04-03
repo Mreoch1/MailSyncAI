@@ -163,7 +163,7 @@ serve(async (req) => {
         details: { provider: 'outlook', email },
       });
 
-    // Return the tokens
+    // Return success response
     return new Response(JSON.stringify({
       success: true,
       provider: 'outlook',
