@@ -4,7 +4,6 @@
   environment = { NODE_VERSION = "20" }
 
 [build.environment]
-  NODE_VERSION = "20"
   NPM_VERSION = "10"
   NPM_FLAGS = "--no-audit --no-fund"
   # Ignore TypeScript errors during build
@@ -87,33 +86,33 @@
   included_files = ["supabase/functions/email-summary/*"]
 
 [functions.oauth-exchange.environment]
-  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
-  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
+  SUPABASE_URL = "https://ucnxqjguatqraoxidtsq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbnhxamd1YXRxcmFveGlkdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1Mjg3ODgsImV4cCI6MjA1NjEwNDc4OH0.pGFzeld6sKKvaVr6jbvkUUggHotq3XFGfktRXu8wNWo"
   GMAIL_CLIENT_ID = "1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com"
   GMAIL_CLIENT_SECRET = "GOCSPX-abcdefghijklmnopqrstuvwxyz"
-  OUTLOOK_CLIENT_ID = "12345678-1234-1234-1234-123456789012"
-  OUTLOOK_CLIENT_SECRET = "abcdefghijklmnopqrstuvwxyz123456"
+  OUTLOOK_CLIENT_ID = "e1bc825c-0baf-4b72-9df7-221003bb2749"
+  OUTLOOK_CLIENT_SECRET = "d67eb5b5-8934-4662-8977-357ead6d7b2b"
   YAHOO_CLIENT_ID = "dj0yJmk9abcdefghijklmnopqrstuvwxyz"
   YAHOO_CLIENT_SECRET = "abcdefghijklmnopqrstuvwxyz123456"
 
 [functions.send-email.environment]
-  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
-  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
-  SMTP_HOST = "smtp.gmail.com"
+  SUPABASE_URL = "https://ucnxqjguatqraoxidtsq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbnhxamd1YXRxcmFveGlkdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1Mjg3ODgsImV4cCI6MjA1NjEwNDc4OH0.pGFzeld6sKKvaVr6jbvkUUggHotq3XFGfktRXu8wNWo"
+  SMTP_HOST = "smtp.mailgun.org"
   SMTP_PORT = "587"
-  SMTP_USER = "your-email@gmail.com"
-  SMTP_PASS = "your-app-password"
+  SMTP_USERNAME = "postmaster@mailsyncai.com"
+  SMTP_FROM = "noreply@mailsyncai.com"
   SITE_URL = "https://mailsyncai.netlify.app"
 
 [functions.email-sync.environment]
-  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
-  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
-  OPENAI_API_KEY = "sk-abcdefghijklmnopqrstuvwxyz1234567890"
+  SUPABASE_URL = "https://ucnxqjguatqraoxidtsq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbnhxamd1YXRxcmFveGlkdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1Mjg3ODgsImV4cCI6MjA1NjEwNDc4OH0.pGFzeld6sKKvaVr6jbvkUUggHotq3XFGfktRXu8wNWo"
+  OPENAI_API_KEY = "sk-9983763537d940c3912078e3d3790dc5"
 
 [functions.email-summary.environment]
-  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
-  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
-  OPENAI_API_KEY = "sk-abcdefghijklmnopqrstuvwxyz1234567890"
+  SUPABASE_URL = "https://ucnxqjguatqraoxidtsq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbnhxamd1YXRxcmFveGlkdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1Mjg3ODgsImV4cCI6MjA1NjEwNDc4OH0.pGFzeld6sKKvaVr6jbvkUUggHotq3XFGfktRXu8wNWo"
+  OPENAI_API_KEY = "sk-9983763537d940c3912078e3d3790dc5"
 
 [[redirects]]
   from = "/auth/*"
