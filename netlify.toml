@@ -1,24 +1,24 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  environment = { 
-    NODE_VERSION = "20",
-    NPM_VERSION = "10",
-    NPM_FLAGS = "--no-audit --no-fund",
-    NETLIFY_USE_YARN = "false",
-    NETLIFY_IGNORE_TYPESCRIPT_ERRORS = "true",
-    VITE_SUPABASE_URL = "https://ucnxqjguatqraoxidtsq.supabase.co",
-    VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbnhxamd1YXRxcmFveGlkdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1Mjg3ODgsImV4cCI6MjA1NjEwNDc4OH0.pGFzeld6sKKvaVr6jbvkUUggHotq3XFGfktRXu8wNWo",
-    VITE_OUTLOOK_CLIENT_ID = "e1bc825c-0baf-4b72-9df7-221003bb2749",
-    VITE_OUTLOOK_CLIENT_SECRET = "d67eb5b5-8934-4662-8977-357ead6d7b2b",
-    VITE_OUTLOOK_REDIRECT_URI = "https://mailsyncai.netlify.app/auth/provider",
-    DEEPSEEK_API_KEY = "sk-9983763537d940c3912078e3d3790dc5",
-    SMTP_HOST = "smtp.mailgun.org",
-    SMTP_PORT = "587",
-    SMTP_USERNAME = "postmaster@mailsyncai.com",
-    SMTP_FROM = "noreply@mailsyncai.com",
-    SITE_URL = "https://eloquent-parfait-84d32a.netlify.app"
-  }
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+  NPM_FLAGS = "--no-audit --no-fund"
+  NETLIFY_USE_YARN = "false"
+  NETLIFY_IGNORE_TYPESCRIPT_ERRORS = "true"
+  VITE_SUPABASE_URL = "https://ucnxqjguatqraoxidtsq.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbnhxamd1YXRxcmFveGlkdHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1Mjg3ODgsImV4cCI6MjA1NjEwNDc4OH0.pGFzeld6sKKvaVr6jbvkUUggHotq3XFGfktRXu8wNWo"
+  VITE_OUTLOOK_CLIENT_ID = "e1bc825c-0baf-4b72-9df7-221003bb2749"
+  VITE_OUTLOOK_CLIENT_SECRET = "d67eb5b5-8934-4662-8977-357ead6d7b2b"
+  VITE_OUTLOOK_REDIRECT_URI = "https://mailsyncai.netlify.app/auth/provider"
+  DEEPSEEK_API_KEY = "sk-9983763537d940c3912078e3d3790dc5"
+  SMTP_HOST = "smtp.mailgun.org"
+  SMTP_PORT = "587"
+  SMTP_USERNAME = "postmaster@mailsyncai.com"
+  SMTP_FROM = "noreply@mailsyncai.com"
+  SITE_URL = "https://eloquent-parfait-84d32a.netlify.app"
 
 [build.processing]
   skip_processing = false
