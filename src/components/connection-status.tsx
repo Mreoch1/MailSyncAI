@@ -147,7 +147,7 @@ export function ConnectionStatus() {
           .select('is_valid, credentials')
           .eq('user_id', settings.user_id)
           .eq('provider', settings.provider)
-          .maybeSingle(); // Use maybeSingle instead of single to handle no rows case
+          .maybeSingle();
 
         if (error) {
           console.error('Error checking credentials:', error);
@@ -185,6 +185,25 @@ export function ConnectionStatus() {
       checkConnection();
     }
   }, [settings, settingsLoading]);
+
+  // Handle OAuth success
+  const handleOAuthSuccess = async (provider: string, email: string) => {
+    try {
+      // Update connection status
+      setStatus('connected');
+      setProviderName(PROVIDER_DISPLAY_NAMES[provider] || provider.toUpperCase());
+      
+      // Close the dialog
+      setShowConnectDialog(false);
+      
+      // Refetch settings
+      await refetch();
+    } catch (error) {
+      console.error('Error handling OAuth success:', error);
+      setStatus('error');
+      setErrorMessage('Failed to update connection status');
+    }
+  };
 
   if (settingsLoading) {
     return (

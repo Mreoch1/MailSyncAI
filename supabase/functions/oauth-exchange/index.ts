@@ -163,15 +163,17 @@ serve(async (req) => {
         details: { provider, email },
       });
 
-    return new Response(
-      JSON.stringify(tokens),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
+    // Return the tokens
+    return new Response(JSON.stringify({
+      success: true,
+      provider,
+      email
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
   } catch (error) {
     console.error('OAuth exchange error:', error);
 
