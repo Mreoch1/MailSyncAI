@@ -142,11 +142,16 @@ export function ConnectionStatus() {
       }
 
       try {
+        // Map hotmail/live/msn to outlook
+        const provider = settings.provider === 'hotmail' || settings.provider === 'live' || settings.provider === 'msn' 
+          ? 'outlook' 
+          : settings.provider;
+
         const { data: credentials, error } = await supabase
           .from('email_provider_credentials')
           .select('is_valid, credentials')
           .eq('user_id', settings.user_id)
-          .eq('provider', settings.provider)
+          .eq('provider', provider)
           .maybeSingle();
 
         if (error) {
@@ -172,7 +177,7 @@ export function ConnectionStatus() {
         }
 
         setStatus('connected');
-        setProviderName(PROVIDER_DISPLAY_NAMES[settings.provider] || settings.provider.toUpperCase());
+        setProviderName(PROVIDER_DISPLAY_NAMES[provider] || provider.toUpperCase());
       } catch (error) {
         console.error('Connection check failed:', error);
         setStatus('error');

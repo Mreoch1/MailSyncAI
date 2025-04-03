@@ -116,7 +116,7 @@ serve(async (req) => {
       .from('email_provider_credentials')
       .upsert({
         user_id: user.id,
-        provider,
+        provider: 'outlook', // Always use 'outlook' as the provider for hotmail/live/msn
         credentials: {
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
@@ -140,7 +140,7 @@ serve(async (req) => {
       .from('provider_connection_status')
       .upsert({
         user_id: user.id,
-        provider,
+        provider: 'outlook', // Always use 'outlook' as the provider for hotmail/live/msn
         status: 'connected',
         last_check: new Date().toISOString(),
         error_message: null
@@ -160,13 +160,13 @@ serve(async (req) => {
         user_id: user.id,
         event_type: 'oauth_exchange',
         status: 'success',
-        details: { provider, email },
+        details: { provider: 'outlook', email },
       });
 
     // Return the tokens
     return new Response(JSON.stringify({
       success: true,
-      provider,
+      provider: 'outlook',
       email
     }), {
       headers: {
