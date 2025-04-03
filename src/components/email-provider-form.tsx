@@ -86,60 +86,42 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
     return user;
   }
 
-  async function handleOAuthLogin(provider: string): Promise<boolean> {
+  const handleOAuthLogin = async (provider: string) => {
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      clearError();
+      // Verify auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw new Error('Not authenticated');
+      }
 
-      await verifyAuthentication();
-
-      // Get the client ID from environment variables
+      // Get client ID from environment
       const clientId = import.meta.env[`VITE_${provider.toUpperCase()}_CLIENT_ID`];
       if (!clientId) {
-        throw new Error(`${provider} integration is not configured`);
+        throw new Error(`${provider} OAuth not configured`);
       }
 
-      // Configure OAuth parameters based on provider
-      const config = PROVIDER_CONFIGS[provider as keyof typeof PROVIDER_CONFIGS];
-      if (!config || config.authType !== 'oauth') {
-        throw new Error('Invalid provider configuration');
-      }
+      // Build OAuth URL
+      const redirectUri = `${window.location.origin}/oauth/callback`;
+      const oauthUrl = new URL(`https://login.microsoftonline.com/common/oauth2/v2.0/authorize`);
+      oauthUrl.searchParams.append('client_id', clientId);
+      oauthUrl.searchParams.append('redirect_uri', redirectUri);
+      oauthUrl.searchParams.append('response_type', 'code');
+      oauthUrl.searchParams.append('scope', 'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.Send offline_access');
+      oauthUrl.searchParams.append('state', provider);
+      oauthUrl.searchParams.append('prompt', 'consent');
 
-      // Build the OAuth URL based on provider
-      const authUrl = provider === 'outlook' 
-        ? 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
-        : provider === 'gmail'
-          ? 'https://accounts.google.com/o/oauth2/v2.0/auth'
-          : 'https://api.login.yahoo.com/oauth2/request_auth';
-
-      // Set up OAuth parameters
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: `${window.location.origin}/auth/provider`,
-        response_type: 'code',
-        scope: provider === 'outlook'
-          ? 'offline_access Mail.Read Mail.Send Mail.ReadWrite User.Read'
-          : provider === 'gmail'
-            ? 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email'
-            : 'mail-r mail-w',
-        access_type: 'offline',
-        prompt: 'consent',
-        state: provider // Pass provider as state to maintain context
-      });
-
-      // Redirect to the provider's OAuth page
-      window.location.href = `${authUrl}?${params.toString()}`;
-      return true;
+      // Redirect to OAuth page
+      window.location.href = oauthUrl.toString();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to connect email provider';
-      console.error('OAuth error:', message);
-      setError(message);
-      toast.error(`Connection failed: ${message}`);
-      return false;
+      console.error('OAuth login error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to start OAuth flow');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   async function handleIMAPConnection(formData: FormData) {
     try {
