@@ -1,10 +1,12 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  environment = { NODE_VERSION = "20" }
 
 [build.environment]
-  NODE_VERSION = "18"
-  NPM_FLAGS = "--legacy-peer-deps"
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+  NPM_FLAGS = "--no-audit --no-fund"
   # Ignore TypeScript errors during build
   NETLIFY_USE_YARN = "false"
   NETLIFY_IGNORE_TYPESCRIPT_ERRORS = "true"
@@ -63,4 +65,57 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Content-Type-Options = "nosniff" 
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;"
+
+[functions]
+  directory = "supabase/functions"
+
+[functions.oauth-exchange]
+  included_files = ["supabase/functions/oauth-exchange/*"]
+
+[functions.send-email]
+  included_files = ["supabase/functions/send-email/*"]
+
+[functions.email-sync]
+  included_files = ["supabase/functions/email-sync/*"]
+
+[functions.email-summary]
+  included_files = ["supabase/functions/email-summary/*"]
+
+[functions.oauth-exchange.environment]
+  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
+  GMAIL_CLIENT_ID = "1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com"
+  GMAIL_CLIENT_SECRET = "GOCSPX-abcdefghijklmnopqrstuvwxyz"
+  OUTLOOK_CLIENT_ID = "12345678-1234-1234-1234-123456789012"
+  OUTLOOK_CLIENT_SECRET = "abcdefghijklmnopqrstuvwxyz123456"
+  YAHOO_CLIENT_ID = "dj0yJmk9abcdefghijklmnopqrstuvwxyz"
+  YAHOO_CLIENT_SECRET = "abcdefghijklmnopqrstuvwxyz123456"
+
+[functions.send-email.environment]
+  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
+  SMTP_HOST = "smtp.gmail.com"
+  SMTP_PORT = "587"
+  SMTP_USER = "your-email@gmail.com"
+  SMTP_PASS = "your-app-password"
+  SITE_URL = "https://mailsyncai.netlify.app"
+
+[functions.email-sync.environment]
+  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
+  OPENAI_API_KEY = "sk-abcdefghijklmnopqrstuvwxyz1234567890"
+
+[functions.email-summary.environment]
+  SUPABASE_URL = "https://qjqjqjqjqjqjqjqjqjq.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcWpxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE5MjE5OTAsImV4cCI6MjAyNzQ5Nzk5MH0.0afaacc44a6d412107b09e4cd8c7"
+  OPENAI_API_KEY = "sk-abcdefghijklmnopqrstuvwxyz1234567890"
+
+[[redirects]]
+  from = "/auth/*"
+  to = "/index.html"
+  status = 200 
