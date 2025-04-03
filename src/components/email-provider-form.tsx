@@ -113,6 +113,9 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
       oauthUrl.searchParams.append('state', provider);
       oauthUrl.searchParams.append('prompt', 'consent');
 
+      // Log the OAuth URL for debugging
+      console.log('OAuth URL:', oauthUrl.toString());
+
       // Redirect to OAuth page
       window.location.href = oauthUrl.toString();
     } catch (error) {
