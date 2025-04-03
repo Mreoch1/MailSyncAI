@@ -112,20 +112,44 @@ serve(async (req) => {
     }
 
     // Save credentials to database
-    await supabaseClient
+    const { error: upsertError } = await supabaseClient
       .from('email_provider_credentials')
       .upsert({
         user_id: user.id,
         provider,
         credentials: {
-          ...tokens,
-          email,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expiry_date: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+          email: email
         },
         is_valid: true,
-        last_validated: new Date().toISOString(),
+        last_validated: new Date().toISOString()
       }, {
-        onConflict: 'user_id,provider',
+        onConflict: 'user_id,provider'
       });
+
+    if (upsertError) {
+      console.error('Error saving credentials:', upsertError);
+      throw new Error('Failed to save credentials');
+    }
+
+    // Update provider connection status
+    const { error: statusError } = await supabaseClient
+      .from('provider_connection_status')
+      .upsert({
+        user_id: user.id,
+        provider,
+        status: 'connected',
+        last_check: new Date().toISOString(),
+        error_message: null
+      }, {
+        onConflict: 'user_id,provider'
+      });
+
+    if (statusError) {
+      console.error('Error updating connection status:', statusError);
+    }
 
     // Log the successful exchange
     await supabaseClient

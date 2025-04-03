@@ -142,14 +142,28 @@ export function ConnectionStatus() {
       }
 
       try {
-        const { data: credentials } = await supabase
+        const { data: credentials, error } = await supabase
           .from('email_provider_credentials')
-          .select('is_valid')
+          .select('is_valid, credentials')
           .eq('user_id', settings.user_id)
           .eq('provider', settings.provider)
           .single();
 
+        if (error) {
+          console.error('Error checking credentials:', error);
+          setStatus('error');
+          setErrorMessage('Failed to check connection status');
+          return;
+        }
+
         if (!credentials?.is_valid) {
+          setStatus('disconnected');
+          return;
+        }
+
+        // Check if credentials are expired
+        const expiryDate = new Date(credentials.credentials.expiry_date);
+        if (expiryDate < new Date()) {
           setStatus('disconnected');
           return;
         }
