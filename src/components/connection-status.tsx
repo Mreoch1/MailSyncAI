@@ -147,7 +147,7 @@ export function ConnectionStatus() {
           .select('is_valid, credentials')
           .eq('user_id', settings.user_id)
           .eq('provider', settings.provider)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to handle no rows case
 
         if (error) {
           console.error('Error checking credentials:', error);
@@ -156,16 +156,19 @@ export function ConnectionStatus() {
           return;
         }
 
-        if (!credentials?.is_valid) {
+        // If no credentials exist or they're invalid
+        if (!credentials || !credentials.is_valid) {
           setStatus('disconnected');
           return;
         }
 
         // Check if credentials are expired
-        const expiryDate = new Date(credentials.credentials.expiry_date);
-        if (expiryDate < new Date()) {
-          setStatus('disconnected');
-          return;
+        if (credentials.credentials?.expiry_date) {
+          const expiryDate = new Date(credentials.credentials.expiry_date);
+          if (expiryDate < new Date()) {
+            setStatus('disconnected');
+            return;
+          }
         }
 
         setStatus('connected');

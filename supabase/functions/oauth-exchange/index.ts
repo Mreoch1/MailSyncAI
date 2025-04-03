@@ -126,7 +126,8 @@ serve(async (req) => {
         is_valid: true,
         last_validated: new Date().toISOString()
       }, {
-        onConflict: 'user_id,provider'
+        onConflict: 'user_id,provider',
+        ignoreDuplicates: false
       });
 
     if (upsertError) {
@@ -144,7 +145,8 @@ serve(async (req) => {
         last_check: new Date().toISOString(),
         error_message: null
       }, {
-        onConflict: 'user_id,provider'
+        onConflict: 'user_id,provider',
+        ignoreDuplicates: false
       });
 
     if (statusError) {
