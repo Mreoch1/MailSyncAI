@@ -37,9 +37,9 @@ const EMAIL_DOMAIN_TO_PROVIDER = {
   'gmail.com': 'gmail',
   'googlemail.com': 'gmail',
   'outlook.com': 'outlook',
-  'hotmail.com': 'hotmail',
-  'live.com': 'live',
-  'msn.com': 'msn',
+  'hotmail.com': 'outlook',
+  'live.com': 'outlook',
+  'msn.com': 'outlook',
   'yahoo.com': 'yahoo',
   'aol.com': 'aol',
   'protonmail.com': 'protonmail',
@@ -47,8 +47,8 @@ const EMAIL_DOMAIN_TO_PROVIDER = {
   'pm.me': 'protonmail',
   'zoho.com': 'zoho',
   'icloud.com': 'icloud',
-  'me.com': 'me',
-  'mac.com': 'mac'
+  'me.com': 'icloud',
+  'mac.com': 'icloud'
 };
 
 // Function to detect provider from email

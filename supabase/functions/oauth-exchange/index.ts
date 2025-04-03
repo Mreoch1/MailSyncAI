@@ -97,6 +97,36 @@ serve(async (req) => {
 
     const tokens = await tokenResponse.json();
 
+    // Get user email from provider
+    let email = '';
+    if (provider === 'outlook') {
+      const userResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+        },
+      });
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        email = userData.userPrincipalName;
+      }
+    }
+
+    // Save credentials to database
+    await supabaseClient
+      .from('email_provider_credentials')
+      .upsert({
+        user_id: user.id,
+        provider,
+        credentials: {
+          ...tokens,
+          email,
+        },
+        is_valid: true,
+        last_validated: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,provider',
+      });
+
     // Log the successful exchange
     await supabaseClient
       .from('email_processing_logs')
@@ -104,7 +134,7 @@ serve(async (req) => {
         user_id: user.id,
         event_type: 'oauth_exchange',
         status: 'success',
-        details: { provider },
+        details: { provider, email },
       });
 
     return new Response(

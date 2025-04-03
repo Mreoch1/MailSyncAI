@@ -123,7 +123,8 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
             ? 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email'
             : 'mail-r mail-w',
         access_type: 'offline',
-        prompt: 'consent'
+        prompt: 'consent',
+        state: provider // Pass provider as state to maintain context
       });
 
       // Redirect to the provider's OAuth page
