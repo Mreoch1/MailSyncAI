@@ -69,6 +69,12 @@ serve(async (req) => {
       throw new Error('Missing required parameters');
     }
 
+    // Verify the redirect URI matches what's expected
+    const expectedRedirectUri = Deno.env.get(`${provider.toUpperCase()}_REDIRECT_URI`);
+    if (expectedRedirectUri && redirect_uri !== expectedRedirectUri) {
+      throw new Error('Invalid redirect URI');
+    }
+
     const config = OAUTH_CONFIGS[provider];
     if (!config) {
       throw new Error(`Unsupported provider: ${provider}`);

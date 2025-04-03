@@ -104,7 +104,7 @@ export function EmailProviderForm({ onSuccess }: EmailProviderFormProps) {
       }
 
       // Build OAuth URL
-      const redirectUri = `${window.location.origin}/oauth/callback`;
+      const redirectUri = import.meta.env[`VITE_${provider.toUpperCase()}_REDIRECT_URI`] || `${window.location.origin}/auth/provider`;
       const oauthUrl = new URL(`https://login.microsoftonline.com/common/oauth2/v2.0/authorize`);
       oauthUrl.searchParams.append('client_id', clientId);
       oauthUrl.searchParams.append('redirect_uri', redirectUri);
